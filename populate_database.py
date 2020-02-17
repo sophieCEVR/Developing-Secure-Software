@@ -13,7 +13,7 @@ if __name__ == '__main__':
     db.session.add(models.User(username='username5', password='password'))
     db.session.commit()
     # Add test posts
-    allUsers = models.User.query.all()
+    allUsers = db.session.query(models.User)
     for usr in allUsers:
         for i in range(1, 4, 1):
             db.session.add(models.Post(title=('Test Post ' + str(i)), body='This is a generated post', author=usr))

@@ -1,0 +1,31 @@
+<!--Inheriting layout template-->
+{% extends "base.html" %}
+
+<!--Content for the Home Page-->
+{% block content %}
+    <h1>Create Post</h1>
+    <!--novalidate disables browser validation - can be removed once flask validation is tested and working-->
+    <form action="{{ url_for('create_post') }}" method="post" novalidate>
+        <p>
+            {{ form.title.label }}
+            <br>
+            {{ form.title }}
+            {% for error in form.title.errors %}
+            <br>
+            <span style="color: red">[{{ error }}]</span>
+            {% endfor %}
+        </p>
+        <p>
+            {{ form.body.label }}
+            <br>
+            {{ form.body }}
+            {% for error in form.body.errors %}
+            <br>
+            <span style="color: red">[{{ error }}]</span>
+            {% endfor %}
+        </p>
+        <p>
+            {{ form.submit }}
+        </p>
+    </form>
+{% endblock content %}

@@ -8,8 +8,11 @@ from datetime import datetime  # datetime object for timestamps
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(64), unique=True, nullable=False)
-    password = db.Column(db.String(64), nullable=False)
-    posts = db.relationship('Post', backref='author')  # can reference User through Post.author instead of Post.user_id
+    password = db.Column(db.String(128), nullable=False)
+    posts = db.relationship('Post', backref='author')
+
+    def __repr__(self):
+        return self.username
 
 
 class Post(db.Model):
