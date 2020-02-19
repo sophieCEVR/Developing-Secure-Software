@@ -7,25 +7,25 @@
     <!--novalidate disables browser validation - can be removed once flask validation is tested and working-->
     <form action="{{ url_for('login') }}" method="post" novalidate>
         <p>
-            {{ form.username.label }}
+            {{ form.username.label|safe }}
             <br>
-            {{ form.username }}
+            {{ form.username|safe }}
             {% for error in form.username.errors %}
             <br>
-            <span style="color: red">[{{ error }}]</span>
+            <span style="color: red">[{{ error|safe }}]</span>
             {% endfor %}
         </p>
         <p>
-            {{ form.password.label }}
+            {{ form.password.label|safe }}
             <br>
-            {{ form.password }}
+            {{ form.password|safe }}
             {% for error in form.password.errors %}
             <br>
-            <span style="color: red">[{{ error }}]</span>
+            <span style="color: red">[{{ error|safe }}]</span>
             {% endfor %}
         </p>
         <p>
-            {{ form.submit }}
+            {{ form.submit|safe }}
         </p>
     </form>
 {% endblock content %}

@@ -6,22 +6,22 @@
         <article class="media content-section">
             <div class="media-body">
                 <div class="article-metadata">
-                    <a class="mr-2" href="{{ url_for('posts', view_argument=post.author) }}">{{ post.author }}</a>
-                    {% if session['user_id'] == post.author.id %}
+                    <a class="mr-2" href="{{ url_for('posts_user_username', user_username=post_usernames[post.id]|safe) }}">{{ post_usernames[post.id]|safe }}</a>
+                    {% if session['user_id'] == post.user_id %}
                         <small>THIS IS YOUR POST!</small>
                     {% endif %}
                     <br>
-                    <small class="text-muted">updated: {{ post.update_time.ctime() }}</small>
+                    <small class="text-muted">updated: {{ post.update_time|safe }}</small>
                     <br>
-                    <small class="text-muted">created: {{ post.create_time.ctime() }}</small>
-                    {% if session['user_id'] == post.author.id %}
+                    <small class="text-muted">created: {{ post.create_time|safe }}</small>
+                    {% if session['user_id'] == post.user_id %}
                         <form action="{{ url_for('delete_post') }}" method="post" novalidate>
                             <button type="submit" name="post_id" value="{{ post.id }}">Delete</button>
                         </form>
                     {% endif %}
                 </div>
-                <h2><a class="article-title" href="{{ url_for('posts', view_argument=post.id) }}">{{ post.title }}</a></h2>
-                <p class="article-content">{{ post.body }}</p>
+                <h2><a class="article-title" href="{{ url_for('posts_post_id', post_id=post.id) }}">{{ post.title|safe }}</a></h2>
+                <p class="article-content">{{ post.body|safe }}</p>
             </div>
         </article>
     {% endfor %}

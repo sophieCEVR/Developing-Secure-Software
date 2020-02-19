@@ -15,7 +15,7 @@
 
     <!--Checks to see if the route contains a title, if not, it defaults to 'Home' as the title-->
     {% if title %}
-        <title>{{ title }}</title>
+        <title>{{ title|safe }}</title>
     {% else %}
         <title>Home</title>
     {% endif %}
@@ -36,7 +36,7 @@
                         <a class="nav-item nav-link" href="{{ url_for('posts') }}">Posts</a>
                         {% if session['user_id'] %}
                             {% if session['user_username'] %}
-                                <a class="nav-item nav-link" href="{{ url_for('posts', view_argument=session['user_username']) }}">My Posts</a>
+                                <a class="nav-item nav-link" href="{{ url_for('posts_user_username', user_username=session['user_username']|safe) }}">My Posts</a>
                             {% endif %}
                             <a class="nav-item nav-link" href="{{ url_for('create_post') }}">Create Post</a>
                         {% endif %}
@@ -45,12 +45,12 @@
                     <div class="navbar-nav ml-auto">
                         {% if session['user_id'] %}
                             {% if session['user_username'] %}
-                                <a class="nav-item nav-link" href="{{ url_for('posts', view_argument=session['user_username']) }}">{{ session['user_username'] }}</a>
+                                <a class="nav-item nav-link" href="{{ url_for('posts_user_username', user_username=session['user_username']|safe) }}">{{ session['user_username']|safe }}</a>
                             {% endif %}
                             <a class="nav-item nav-link" href="{{ url_for('logout') }}">Logout</a>
                         {% else %}
                             <a class="nav-item nav-link" href="{{ url_for('login') }}">Login</a>
-                            <a class="nav-item nav-link" href="{{ url_for('create_account') }}">Create Account</a>
+                            <a class="nav-item nav-link" href="{{ url_for('register') }}">Create Account</a>
                         {% endif %}
                     </div>
                 </div>
@@ -62,11 +62,11 @@
     <div class="container">
         {% for message in get_flashed_messages() %}
         <div class="alert alert-warning">
-            <button type="button" class="close" data-dismiss="alert">&times;</button>
             {{ message }}
+            <button type="button" class="close" data-dismiss="alert">&times;</button>
         </div>
+        {% endfor %}
     </div>
-    {% endfor %}
 
     <!--Content is pulled from the content blocks contained within the other templates and displayed here-->
     <main role="main" class="container">

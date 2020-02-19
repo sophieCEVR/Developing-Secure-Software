@@ -7,25 +7,25 @@
     <!--novalidate disables browser validation - can be removed once flask validation is tested and working-->
     <form action="{{ url_for('create_post') }}" method="post" novalidate>
         <p>
-            {{ form.title.label }}
+            {{ form.title.label|safe }}
             <br>
-            {{ form.title }}
+            {{ form.title|safe }}
             {% for error in form.title.errors %}
             <br>
-            <span style="color: red">[{{ error }}]</span>
+            <span style="color: red">[{{ error|safe }}]</span>
             {% endfor %}
         </p>
         <p>
-            {{ form.body.label }}
+            {{ form.body.label|safe }}
             <br>
-            {{ form.body }}
+            {{ form.body|safe }}
             {% for error in form.body.errors %}
             <br>
-            <span style="color: red">[{{ error }}]</span>
+            <span style="color: red">[{{ error|safe }}]</span>
             {% endfor %}
         </p>
         <p>
-            {{ form.submit }}
+            {{ form.submit|safe }}
         </p>
     </form>
 {% endblock content %}

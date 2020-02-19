@@ -7,6 +7,7 @@ from . import forms  # import forms
 from . import models  # import models
 
 from flask import render_template, redirect, url_for, session, flash, request
+from datetime import datetime
 
 
 @app.route('/')
@@ -16,24 +17,51 @@ def about():
 
 
 @app.route('/posts')
-@app.route('/posts/<view_argument>')
-def posts(view_argument=None):
+def posts():
     all_posts = []
-    if view_argument:
-        if view_argument.isdigit():  # if argument is digit e.g. /post/2 (digit means post id)
-            all_posts = db.session.query(models.Post).filter_by(id=view_argument)
-        else:  # argument is not digit e.g. /post/_2 (not digit means account username)
-            user = db.session.query(models.User).filter_by(username=view_argument).first()
-            if user:
-                all_posts = db.session.query(models.Post).filter_by(
-                    user_id=user.id
-                ).order_by(models.Post.update_time.desc())
-    else:
-        all_posts = db.session.query(models.Post).order_by(models.Post.update_time.desc())
-    return render_template('posts.html', posts=all_posts, title='Posts')
+    post_usernames = {}
+    raw_sql = 'SELECT * FROM post ORDER BY update_time DESC'
+    all_posts = db.session.execute(raw_sql).fetchall()
+    for p in all_posts:
+        raw_sql = 'SELECT username FROM user WHERE id="{}"'.format(p.user_id)
+        p_user = db.session.execute(raw_sql).first()
+        if p_user:
+            post_usernames[p.id] = p_user.username
+    return render_template('posts.html', posts=all_posts, post_usernames=post_usernames, title='Posts')
 
 
-@app.route('/create_post', methods=['GET', 'POST'])
+@app.route('/posts/view/<post_id>')
+def posts_post_id(post_id=None):
+    all_posts = []
+    post_usernames = {}
+    raw_sql = 'SELECT * FROM post WHERE id="{}"'.format(post_id)
+    flash(raw_sql)
+    the_post = db.session.execute(raw_sql).first()
+    if the_post:
+        all_posts.append(the_post)
+        raw_sql = 'SELECT username FROM user WHERE id="{}"'.format(the_post.user_id)
+        the_user = db.session.execute(raw_sql).first()
+        if the_user:
+            post_usernames[the_post.id] = the_user.username
+    return render_template('posts.html', posts=all_posts, post_usernames=post_usernames, title='Posts')
+
+
+@app.route('/posts/account/<user_username>')
+def posts_user_username(user_username=None):
+    all_posts = []
+    post_usernames = {}
+    raw_sql = 'SELECT id, username FROM user WHERE username="{}"'.format(user_username)
+    flash(raw_sql)
+    the_user = db.session.execute(raw_sql).first()
+    if the_user:
+        raw_sql = 'SELECT * FROM post WHERE user_id="{}" ORDER BY update_time DESC'.format(the_user.id)
+        all_posts = db.session.execute(raw_sql).fetchall()
+        for p in all_posts:
+            post_usernames[p.id] = the_user.username
+    return render_template('posts.html', posts=all_posts, post_usernames=post_usernames, title='Posts')
+
+
+@app.route('/posts/create', methods=['GET', 'POST'])
 def create_post():
     if not session.get('user_id'):
         flash('You must log in to create a post!')
@@ -41,45 +69,66 @@ def create_post():
     else:
         form = forms.CreatePostForm()
         if form.validate_on_submit():
-            db.session.add(models.Post(title=form.title.data, body=form.body.data, user_id=session['user_id']))
+            values = [session['user_id'], form.title.data, form.body.data, datetime.utcnow(), datetime.utcnow()]
+            raw_sql = 'INSERT INTO post (user_id, title, body, create_time, update_time) VALUES ({})'.format(
+                ', '.join('"{}"'.format(str(v)) for v in values)
+            )
+            flash(raw_sql)
+            db.session.execute(raw_sql)
             db.session.commit()
             flash('Your post has been created')
             return redirect(url_for('posts'))
         return render_template('create_post.html', form=form, title='Create Post')
 
 
-@app.route('/delete_post', methods=['POST'])
+@app.route('/posts/delete', methods=['POST'])
 def delete_post(post_id=None):
     if not session.get('user_id'):
         flash('You must log in to delete a post!')
         return redirect(url_for('login'))
+    elif not request.form.get('post_id'):
+        flash('You must provide an id to delete a post!')
+        return redirect(url_for('posts'))
     else:
-        the_post = db.session.query(models.Post).filter_by(id=request.form['post_id']).first()
+        raw_sql = 'SELECT * FROM post WHERE id="{}"'.format(request.form['post_id'])
+        flash(raw_sql)
+        the_post = db.session.execute(raw_sql).first()
         if not the_post or the_post.user_id != session['user_id']:  # only delete posts that exist and are owned by user
             flash('You cannot delete that')
-            return redirect(url_for('posts', view_argument=request.form['post_id']))
+            return redirect(url_for('posts_post_id', post_id=request.form['post_id']))
         else:
-            db.session.delete(the_post)
+            raw_sql = 'DELETE FROM post WHERE id="{}"'.format(the_post.id)
+            flash(raw_sql)
+            db.session.execute(raw_sql)
             db.session.commit()
             flash('Your post has been deleted')
             return redirect(url_for('posts'))
 
 
-@app.route('/create_account', methods=['GET', 'POST'])
-def create_account():
+@app.route('/register', methods=['GET', 'POST'])
+def register():
     if session.get('user_id'):
         flash('Please logout before creating a new account!')
         return redirect(url_for('posts'))
     else:
         form = forms.CreateAccountForm()
         if form.validate_on_submit():
-            existing_user = db.session.query(models.User).filter_by(username=form.username.data).first()
-            if not existing_user:
-                db.session.add(models.User(username=form.username.data, password=form.password.data))
+            raw_sql = 'SELECT * FROM user WHERE username="{}" AND password="{}"'.format(
+                form.username.data, form.password.data
+            )
+            flash(raw_sql)
+            the_user = db.session.execute(raw_sql).first()
+            if not the_user:
+                values = [form.username.data, form.password.data]
+                raw_sql = 'INSERT INTO user (username, password) VALUES ({})'.format(
+                    ', '.join('"{}"'.format(str(v)) for v in values)
+                )
+                flash(raw_sql)
+                db.session.execute(raw_sql)
                 db.session.commit()
             flash('Your account has been created')
             return redirect(url_for('login'))
-        return render_template('create_account.html', form=form, title='Create Account')
+        return render_template('register.html', form=form, title='Create Account')
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -90,14 +139,15 @@ def login():
     else:
         form = forms.LoginForm()
         if form.validate_on_submit():
-            query_result = db.session.query(models.User).filter_by(
-                username=form.username.data,
-                password=form.password.data
-            ).first()
-            if query_result:
-                session['user_id'] = query_result.id
-                session['user_username'] = query_result.username
-                flash('You have logged in as ' + str(query_result.username))
+            raw_sql = 'SELECT * FROM user WHERE username="{}" AND password="{}"'.format(
+                form.username.data, form.password.data
+            )
+            flash(raw_sql)
+            the_user = db.session.execute(raw_sql).first()
+            if the_user:
+                session['user_id'] = the_user.id
+                session['user_username'] = the_user.username
+                flash('You have logged in as ' + str(the_user.username))
                 return redirect(url_for('posts'))
             else:
                 flash('Invalid username and/or password')

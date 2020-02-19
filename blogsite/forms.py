@@ -9,8 +9,8 @@ from wtforms import validators, fields
 class CreateAccountForm(FlaskForm):
     username = fields.StringField('Username*:', validators=[
         validators.InputRequired(),
-        validators.Length(min=8, max=models.User.username.type.length),
-        validators.Regexp(r'^\w*[a-zA-Z_]+\w*$', message='Must contain at least 1 alphabetic character and cannot contain special characters')
+        validators.Length(min=8, max=models.User.username.type.length)
+        #validators.Regexp(r'^\w*[a-zA-Z_]+\w*$', message='Must contain at least 1 alphabetic character and cannot contain special characters')
     ])
     password = fields.PasswordField('Password*:', validators=[
         validators.InputRequired(),
@@ -26,8 +26,8 @@ class CreateAccountForm(FlaskForm):
 class LoginForm(FlaskForm):
     username = fields.StringField('Username*:', validators=[
         validators.InputRequired(),
-        validators.Length(min=8, max=models.User.username.type.length),
-        validators.Regexp(r'^\w*[a-zA-Z_]+\w*$', message='Must contain at least 1 alphabetic character and cannot contain special characters')
+        validators.Length(min=8, max=models.User.username.type.length)
+        #validators.Regexp(r'^\w*[a-zA-Z_]+\w*$', message='Must contain at least 1 alphabetic character and cannot contain special characters')
     ])
     password = fields.PasswordField('Password*:', validators=[
         validators.InputRequired(),
