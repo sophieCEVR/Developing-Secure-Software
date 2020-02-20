@@ -23,7 +23,8 @@ def posts():
     raw_sql = 'SELECT * FROM post ORDER BY update_time DESC'
     all_posts = db.session.execute(raw_sql).fetchall()
     for p in all_posts:
-        raw_sql = 'SELECT username FROM user WHERE id="{}"'.format(p.user_id)
+        cleanpuserid = sanitise.all(p.user_id)
+        raw_sql = 'SELECT username FROM user WHERE id="{}"'.format(cleanpuserid)
         p_user = db.session.execute(raw_sql).first()
         if p_user:
             post_usernames[p.id] = p_user.username
@@ -40,7 +41,8 @@ def posts_post_id(post_id=None):
     the_post = db.session.execute(raw_sql).first()
     if the_post:
         all_posts.append(the_post)
-        raw_sql = 'SELECT username FROM user WHERE id="{}"'.format(the_post.user_id)
+        cleanthepostuserid = sanitise.all(the_post.user_id)
+        raw_sql = 'SELECT username FROM user WHERE id="{}"'.format(cleanthepostuserid)
         the_user = db.session.execute(raw_sql).first()
         if the_user:
             post_usernames[the_post.id] = the_user.username
@@ -56,7 +58,8 @@ def posts_user_username(user_username=None):
     flash(raw_sql)
     the_user = db.session.execute(raw_sql).first()
     if the_user:
-        raw_sql = 'SELECT * FROM post WHERE user_id="{}" ORDER BY update_time DESC'.format(the_user.id)
+        cleantheuserid = sanitise.all(the_user.id)
+        raw_sql = 'SELECT * FROM post WHERE user_id="{}" ORDER BY update_time DESC'.format(cleantheuserid)
         all_posts = db.session.execute(raw_sql).fetchall()
         for p in all_posts:
             post_usernames[p.id] = the_user.username
