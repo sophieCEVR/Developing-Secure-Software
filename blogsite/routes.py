@@ -1,12 +1,12 @@
 # File containing the routes for blogsite
 
-from . import app  # import the app object from the current package
+from . import app, sanitise  # import the app object from the current package
 from . import db  # import the db object from the current package
 
 from . import forms  # import forms
 from . import models  # import models
 
-from flask import render_template, redirect, url_for, session, flash, request
+from flask import render_template, redirect, url_for, session, flash, request, escape
 from datetime import datetime
 
 
@@ -34,7 +34,8 @@ def posts():
 def posts_post_id(post_id=None):
     all_posts = []
     post_usernames = {}
-    raw_sql = 'SELECT * FROM post WHERE id="{}"'.format(post_id)
+    cleanpostid = sanitise.all(post_id)  # remove html chars, see sanitise.py
+    raw_sql = 'SELECT * FROM post WHERE id="{}"'.format(cleanpostid)
     flash(raw_sql)
     the_post = db.session.execute(raw_sql).first()
     if the_post:
@@ -50,7 +51,8 @@ def posts_post_id(post_id=None):
 def posts_user_username(user_username=None):
     all_posts = []
     post_usernames = {}
-    raw_sql = 'SELECT id, username FROM user WHERE username="{}"'.format(user_username)
+    cleanusername = sanitise.all(user_username)
+    raw_sql = 'SELECT id, username FROM user WHERE username="{}"'.format(cleanusername)
     flash(raw_sql)
     the_user = db.session.execute(raw_sql).first()
     if the_user:
@@ -68,8 +70,12 @@ def create_post():
         return redirect(url_for('login'))
     else:
         form = forms.CreatePostForm()
+
         if form.validate_on_submit():
-            values = [session['user_id'], form.title.data, form.body.data, datetime.utcnow(), datetime.utcnow()]
+            cleanformtitle = sanitise.all(form.title.data)
+            cleanformbody = sanitise.all(form.body.data)
+            cleansessionid = sanitise.all(session['user_id'])
+            values = [cleansessionid, cleanformtitle, cleanformbody, datetime.utcnow(), datetime.utcnow()]
             raw_sql = 'INSERT INTO post (user_id, title, body, create_time, update_time) VALUES ({})'.format(
                 ', '.join('"{}"'.format(str(v)) for v in values)
             )
@@ -90,14 +96,17 @@ def delete_post(post_id=None):
         flash('You must provide an id to delete a post!')
         return redirect(url_for('posts'))
     else:
-        raw_sql = 'SELECT * FROM post WHERE id="{}"'.format(request.form['post_id'])
+        cleanpostid = sanitise.all(request.form['post_id'])
+
+        raw_sql = 'SELECT * FROM post WHERE id="{}"'.format(cleanpostid)
         flash(raw_sql)
         the_post = db.session.execute(raw_sql).first()
         if not the_post or the_post.user_id != session['user_id']:  # only delete posts that exist and are owned by user
             flash('You cannot delete that')
-            return redirect(url_for('posts_post_id', post_id=request.form['post_id']))
+            return redirect(url_for('posts_post_id', post_id=session['user_id']))
         else:
-            raw_sql = 'DELETE FROM post WHERE id="{}"'.format(the_post.id)
+            cleanthepost = sanitise.all(the_post.id)
+            raw_sql = 'DELETE FROM post WHERE id="{}"'.format(cleanthepost)
             flash(raw_sql)
             db.session.execute(raw_sql)
             db.session.commit()
@@ -113,13 +122,15 @@ def register():
     else:
         form = forms.CreateAccountForm()
         if form.validate_on_submit():
+            cleanusername = sanitise.all(form.username.data)
+            cleanpassword = sanitise.all(form.password.data)
             raw_sql = 'SELECT * FROM user WHERE username="{}" AND password="{}"'.format(
-                form.username.data, form.password.data
+                cleanusername, cleanpassword
             )
             flash(raw_sql)
             the_user = db.session.execute(raw_sql).first()
             if not the_user:
-                values = [form.username.data, form.password.data]
+                values = [cleanusername, cleanpassword]
                 raw_sql = 'INSERT INTO user (username, password) VALUES ({})'.format(
                     ', '.join('"{}"'.format(str(v)) for v in values)
                 )
@@ -139,8 +150,10 @@ def login():
     else:
         form = forms.LoginForm()
         if form.validate_on_submit():
+            cleanusername = sanitise.all(form.username.data)
+            cleanpassword = sanitise.all(form.password.data)
             raw_sql = 'SELECT * FROM user WHERE username="{}" AND password="{}"'.format(
-                form.username.data, form.password.data
+                cleanusername, cleanpassword
             )
             flash(raw_sql)
             the_user = db.session.execute(raw_sql).first()
