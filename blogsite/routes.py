@@ -7,7 +7,11 @@ from . import forms  # import forms
 from . import models  # import models
 
 from flask import render_template, redirect, url_for, session, flash, request, escape
+
 from datetime import datetime
+import time
+
+account_enumeration_times = {'posts_user_username': dict()}
 
 
 @app.route('/')
@@ -37,7 +41,7 @@ def posts_post_id(post_id=None):
     post_usernames = {}
     cleanpostid = sanitise.all(post_id)  # remove html chars, see sanitise.py
     raw_sql = 'SELECT * FROM post WHERE id="{}"'.format(cleanpostid)
-    flash(raw_sql)
+    # flash(raw_sql)  # Flash the SQL for testing and debugging
     the_post = db.session.execute(raw_sql).first()
     if the_post:
         all_posts.append(the_post)
@@ -51,11 +55,13 @@ def posts_post_id(post_id=None):
 
 @app.route('/posts/account/<user_username>')
 def posts_user_username(user_username=None):
+    wait_time = 0  # Initial time to wait
+    start_time = time.time()  # Begin timing the process
     all_posts = []
     post_usernames = {}
     cleanusername = sanitise.all(user_username)
     raw_sql = 'SELECT id, username FROM user WHERE username="{}"'.format(cleanusername)
-    flash(raw_sql)
+    # flash(raw_sql)  # Flash the SQL for testing and debugging
     the_user = db.session.execute(raw_sql).first()
     if the_user:
         cleantheuserid = sanitise.all(the_user.id)
@@ -63,6 +69,27 @@ def posts_user_username(user_username=None):
         all_posts = db.session.execute(raw_sql).fetchall()
         for p in all_posts:
             post_usernames[p.id] = the_user.username
+        try:  # Update average time of query (case = data present)
+            account_enumeration_times['posts_user_username']['success'] += time.time() - start_time
+            account_enumeration_times['posts_user_username']['success'] *= 0.5
+        except KeyError:
+            account_enumeration_times['posts_user_username']['success'] = time.time() - start_time
+        if account_enumeration_times['posts_user_username'].get('failure'):  # Get the difference between average times
+            wait_time = (account_enumeration_times['posts_user_username']['failure']
+                         - account_enumeration_times['posts_user_username']['success'])
+    else:
+        try:  # Update average time of query (case = data NOT present)
+            account_enumeration_times['posts_user_username']['failure'] += time.time() - start_time
+            account_enumeration_times['posts_user_username']['failure'] *= 0.5
+        except KeyError:
+            account_enumeration_times['posts_user_username']['failure'] = time.time() - start_time
+        if account_enumeration_times['posts_user_username'].get('success'):  # Get the difference between average times
+            wait_time = (account_enumeration_times['posts_user_username']['success']
+                         - account_enumeration_times['posts_user_username']['failure'])
+    if wait_time > 0:
+        time.sleep(wait_time)
+    #flash(account_enumeration_times.get('posts_user_username'))  # Flash data for testing and debugging
+    #flash('Wait Time = ' + str(wait_time))  # Flash wait time for testing and debugging
     return render_template('posts.html', posts=all_posts, post_usernames=post_usernames, title='Posts')
 
 
@@ -74,19 +101,26 @@ def create_post():
     else:
         form = forms.CreatePostForm()
 
-        if form.validate_on_submit():
-            cleanformtitle = sanitise.all(form.title.data)
-            cleanformbody = sanitise.all(form.body.data)
+        if request.method == 'POST' and form.validate():
             cleansessionid = sanitise.all(session['user_id'])
-            values = [cleansessionid, cleanformtitle, cleanformbody, datetime.utcnow(), datetime.utcnow()]
-            raw_sql = 'INSERT INTO post (user_id, title, body, create_time, update_time) VALUES ({})'.format(
-                ', '.join('"{}"'.format(str(v)) for v in values)
-            )
-            flash(raw_sql)
-            db.session.execute(raw_sql)
-            db.session.commit()
-            flash('Your post has been created')
-            return redirect(url_for('posts'))
+            raw_sql = 'SELECT id FROM user WHERE id="{}"'.format(cleansessionid)
+            # flash(raw_sql)  # Flash the SQL for testing and debugging
+            the_user = db.session.execute(raw_sql).first()
+            if the_user:  # Only create a post if the user exists
+                cleanformtitle = sanitise.all(form.title.data)
+                cleanformbody = sanitise.all(form.body.data)
+                values = [cleansessionid, cleanformtitle, cleanformbody, datetime.utcnow(), datetime.utcnow()]
+                raw_sql = 'INSERT INTO post (user_id, title, body, create_time, update_time) VALUES ({})'.format(
+                    ', '.join('"{}"'.format(str(v)) for v in values)
+                )
+                # flash(raw_sql)  # Flash the SQL for testing and debugging
+                db.session.execute(raw_sql)
+                db.session.commit()
+                flash('Your post has been created')
+                return redirect(url_for('posts'))
+            else:  # If the user does not exist, redirect to logout
+                flash('An error occurred whilst processing your request')
+                return redirect(url_for('logout'))
         return render_template('create_post.html', form=form, title='Create Post')
 
 
@@ -102,7 +136,7 @@ def delete_post(post_id=None):
         cleanpostid = sanitise.all(request.form['post_id'])
 
         raw_sql = 'SELECT * FROM post WHERE id="{}"'.format(cleanpostid)
-        flash(raw_sql)
+        # flash(raw_sql)  # Flash the SQL for testing and debugging
         the_post = db.session.execute(raw_sql).first()
         if not the_post or the_post.user_id != session['user_id']:  # only delete posts that exist and are owned by user
             flash('You cannot delete that')
@@ -110,7 +144,7 @@ def delete_post(post_id=None):
         else:
             cleanthepost = sanitise.all(the_post.id)
             raw_sql = 'DELETE FROM post WHERE id="{}"'.format(cleanthepost)
-            flash(raw_sql)
+            # flash(raw_sql)  # Flash the SQL for testing and debugging
             db.session.execute(raw_sql)
             db.session.commit()
             flash('Your post has been deleted')
@@ -124,23 +158,23 @@ def register():
         return redirect(url_for('posts'))
     else:
         form = forms.CreateAccountForm()
-        if form.validate_on_submit():
+        if request.method == 'POST' and form.validate():
             cleanusername = sanitise.all(form.username.data)
             cleanpassword = sanitise.all(form.password.data)
             raw_sql = 'SELECT * FROM user WHERE username="{}" AND password="{}"'.format(
                 cleanusername, cleanpassword
             )
-            flash(raw_sql)
+            # flash(raw_sql)  # Flash the SQL for testing and debugging
             the_user = db.session.execute(raw_sql).first()
             if not the_user:
                 values = [cleanusername, cleanpassword]
                 raw_sql = 'INSERT INTO user (username, password) VALUES ({})'.format(
                     ', '.join('"{}"'.format(str(v)) for v in values)
                 )
-                flash(raw_sql)
+                # flash(raw_sql)  # Flash the SQL for testing and debugging
                 db.session.execute(raw_sql)
                 db.session.commit()
-            flash('Your account has been created')
+            flash('If this account did not already exist, you have created an account')
             return redirect(url_for('login'))
         return render_template('register.html', form=form, title='Create Account')
 
@@ -152,22 +186,32 @@ def login():
         return redirect(url_for('posts'))
     else:
         form = forms.LoginForm()
-        if form.validate_on_submit():
+        if request.method == 'POST' and form.validate():
             cleanusername = sanitise.all(form.username.data)
             cleanpassword = sanitise.all(form.password.data)
             raw_sql = 'SELECT * FROM user WHERE username="{}" AND password="{}"'.format(
                 cleanusername, cleanpassword
             )
-            flash(raw_sql)
+            # flash(raw_sql)  # Flash the SQL for testing and debugging
             the_user = db.session.execute(raw_sql).first()
+            if not session.get('login_attempts'):
+                session['login_attempts'] = 1
+            x = max(0, session['login_attempts'] - 2)  # Only stall login process after 2 unsuccessful login attempts
+            wait_time = (5 * x) / (x + 1)
+            # flash("Login Attempt " + str(session['login_attempts']))  # Flash login attempts for testing and debugging
+            # flash("Wait Time = " + str(wait_time))  # Flash wait time for testing and debugging
+            if wait_time > 0:
+                time.sleep(wait_time)
             if the_user:
-                session['user_id'] = the_user.id
+                session.pop('login_attempts', None)  # Successful login, forget login attempts
+                session['user_id'] = the_user.id  # Log the user in (account operations depend on user_id)
                 session['user_username'] = the_user.username
                 flash('You have logged in as ' + str(the_user.username))
                 return redirect(url_for('posts'))
-            else:
+            else:  # Unsuccessful login, increment login attempts
+                session['login_attempts'] = min(32, session['login_attempts'] + 1)
                 flash('Invalid username and/or password')
-        print(form.errors)  # Display form errors to console (e.g. 'username', 'csrf_token', etc) for testing/debugging
+        # flash(form.errors)  # Flash form errors for testing and debugging
         return render_template('login.html', form=form, title='Login')
 
 
