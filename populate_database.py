@@ -6,15 +6,16 @@ from blogsite import models  # import the models used by the database
 
 if __name__ == '__main__':
     # Add test users
-    db.session.add(models.User(username='username1', password='password'))
-    db.session.add(models.User(username='username2', password='password'))
-    db.session.add(models.User(username='username3', password='password'))
-    db.session.add(models.User(username='username4', password='password'))
-    db.session.add(models.User(username='username5', password='password'))
+    for i in range(0, 20, 1):
+        username_string = 'username' + str(i)
+        password_string = 'password' + str(i)
+        db.session.add(models.User(username=username_string, password=password_string))
     db.session.commit()
     # Add test posts
     allUsers = db.session.query(models.User)
     for usr in allUsers:
-        for i in range(1, 4, 1):
-            db.session.add(models.Post(title=('Test Post ' + str(i)), body='This is a generated post', author=usr))
+        for i in range(0, 20, 1):
+            title_string = 'Test Post ' + str(i)
+            body_string = 'This is a generated post'
+            db.session.add(models.Post(title=title_string, body=body_string, author=usr))
     db.session.commit()
