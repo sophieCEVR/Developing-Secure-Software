@@ -245,16 +245,19 @@ def csrf_token():
 # compare_times checks if the specified time has passed, returning a boolean.
 def validate_session(session_user):
     values = get_user_data(session_user, 'csrf_token')
-    valid_period = datetime.strptime(values[1], '%Y-%m-%d %H:%M:%S.%f') + timedelta(minutes=1)
-    compare_time(valid_period)
+    valid_period = datetime.strptime(values[1], '%Y-%m-%d %H:%M:%S.%f') + timedelta(minutes=10)
+    return compare_time(valid_period)
 
-
+# If the current time is less than than the time passed, return true. Else return false.
 def compare_time(comparison_time):
     now = datetime.now()
-    if now > comparison_time:
-        return False
-    else:
+    print(comparison_time)
+    print(now)
+    print(now > comparison_time)
+    if now < comparison_time:
         return True
+    else:
+        return False
 
 
 def get_user_data(session_user, table_name):
@@ -264,5 +267,4 @@ def get_user_data(session_user, table_name):
     values = results.first()
     return values
 
-def test_get_table(session_user):
-    get_user_data(session_user, 'post')
+
