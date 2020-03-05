@@ -98,14 +98,11 @@ def posts_user_username(user_username=None):
 
 @app.route('/posts/create', methods=['GET', 'POST'])
 def create_post():
-    session_user = session.get('user_id')
-    if not session_user:
+    if not session.get('user_id'):
         flash('You must log in to create a post!')
         return redirect(url_for('login'))
-    elif not validate_session(session_user):
-        flash('Session expired, please login again.')
-        return redirect(url_for('logout'))
     else:
+        validate_session()
         form = forms.CreatePostForm()
 
         if request.method == 'POST' and form.validate():
@@ -231,6 +228,19 @@ def login():
 
 @app.route('/logout')
 def logout():
+    csrf_token_check = 'SELECT * FROM csrf_token'
+    # flash(csrf_token_check)  # Flash the SQL for testing and debugging
+    results = db.session.execute(csrf_token_check).first()
+    if results is not None:
+        session_user = session.get('user_id')
+        raw_sql = 'SELECT * FROM csrf_token WHERE user_id="{}"'.format(session_user)
+        # flash(raw_sql)  # Flash the SQL for testing and debugging
+        results = db.session.execute(raw_sql)
+        values = results.first()
+        raw_sql = 'DELETE FROM csrf_token WHERE token="{}" AND user_id="{}"'.format(values[0], values[2])
+        # flash(raw_sql)  # Flash the SQL for testing and debugging
+        db.session.execute(raw_sql)
+        db.session.commit()
     session.pop('user_id', None)
     session.pop('user_username', None)
     flash('You have been logged out')
@@ -242,29 +252,34 @@ def csrf_token():
     return ''.join(random.choice(letters) for i in range(25))
 
 
-# compare_times checks if the specified time has passed, returning a boolean.
-def validate_session(session_user):
-    values = get_user_data(session_user, 'csrf_token')
-    valid_period = datetime.strptime(values[1], '%Y-%m-%d %H:%M:%S.%f') + timedelta(minutes=10)
-    return compare_time(valid_period)
+# validates if the session is still within the specified time period. Returns true if valid, else false.
+def validate_session():
+    session_user = session.get('user_id')
+    raw_sql = 'SELECT * FROM csrf_token WHERE user_id="{}"'.format(session_user)
+    # flash(raw_sql)  # Flash the SQL for testing and debugging
+    results = db.session.execute(raw_sql)
+    values = results.first()
+
+    valid_period = datetime.strptime(values[1], '%Y-%m-%d %H:%M:%S.%f') + timedelta(minutes=1)
+    valid_session = compare_time(valid_period)
+
+    if valid_session:
+        raw_sql = 'UPDATE csrf_token SET token="{}", valid_from="{}" WHERE user_id="{}";'.format(
+            csrf_token(), datetime.utcnow(), session_user)
+        # flash(raw_sql)  # Flash the SQL for testing and debugging
+        db.session.execute(raw_sql)
+        db.session.commit()
+        return True
+    else:
+        flash('Session expired, please login again.')
+        logout()
+        return redirect(url_for('logout'))
+
 
 # If the current time is less than than the time passed, return true. Else return false.
 def compare_time(comparison_time):
-    now = datetime.now()
-    print(comparison_time)
-    print(now)
-    print(now > comparison_time)
+    now = datetime.utcnow()
     if now < comparison_time:
         return True
     else:
         return False
-
-
-def get_user_data(session_user, table_name):
-    raw_sql = 'SELECT * FROM "{}" WHERE user_id="{}"'.format(table_name, session_user)
-    # flash(raw_sql)  # Flash the SQL for testing and debugging
-    results = db.session.execute(raw_sql)
-    values = results.first()
-    return values
-
-
