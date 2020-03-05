@@ -1,4 +1,5 @@
 # File containing the routes for blogsite
+from typing import Optional, Any
 
 from . import app, sanitise  # import the app object from the current package
 from . import db  # import the db object from the current package
@@ -8,8 +9,10 @@ from . import models  # import models
 
 from flask import render_template, redirect, url_for, session, flash, request, escape
 
-from datetime import datetime
+from datetime import datetime, timedelta
 import time
+import random
+import string
 
 account_enumeration_times = {'posts_user_username': dict()}
 
@@ -88,16 +91,20 @@ def posts_user_username(user_username=None):
                          - account_enumeration_times['posts_user_username']['failure'])
     if wait_time > 0:
         time.sleep(wait_time)
-    #flash(account_enumeration_times.get('posts_user_username'))  # Flash data for testing and debugging
-    #flash('Wait Time = ' + str(wait_time))  # Flash wait time for testing and debugging
+    # flash(account_enumeration_times.get('posts_user_username'))  # Flash data for testing and debugging
+    # flash('Wait Time = ' + str(wait_time))  # Flash wait time for testing and debugging
     return render_template('posts.html', posts=all_posts, post_usernames=post_usernames, title='Posts')
 
 
 @app.route('/posts/create', methods=['GET', 'POST'])
 def create_post():
-    if not session.get('user_id'):
+    session_user = session.get('user_id')
+    if not session_user:
         flash('You must log in to create a post!')
         return redirect(url_for('login'))
+    elif not validate_session(session_user):
+        flash('Session expired, please login again.')
+        return redirect(url_for('logout'))
     else:
         form = forms.CreatePostForm()
 
@@ -187,10 +194,10 @@ def login():
     else:
         form = forms.LoginForm()
         if request.method == 'POST' and form.validate():
-            cleanusername = sanitise.all(form.username.data)
-            cleanpassword = sanitise.all(form.password.data)
+            cleanUsername = sanitise.all(form.username.data)
+            cleanPassword = sanitise.all(form.password.data)
             raw_sql = 'SELECT * FROM user WHERE username="{}" AND password="{}"'.format(
-                cleanusername, cleanpassword
+                cleanUsername, cleanPassword
             )
             # flash(raw_sql)  # Flash the SQL for testing and debugging
             the_user = db.session.execute(raw_sql).first()
@@ -203,6 +210,13 @@ def login():
             if wait_time > 0:
                 time.sleep(wait_time)
             if the_user:
+                values = [csrf_token(), datetime.utcnow(), the_user.id]
+                raw_sql = 'INSERT INTO csrf_token (token, valid_from, user_id) VALUES({})'.format(
+                    ', '.join('"{}"'.format(str(v)) for v in values)
+                )
+                # flash(raw_sql)  # Flash the SQL for testing and debugging
+                db.session.execute(raw_sql)
+                db.session.commit()
                 session.pop('login_attempts', None)  # Successful login, forget login attempts
                 session['user_id'] = the_user.id  # Log the user in (account operations depend on user_id)
                 session['user_username'] = the_user.username
@@ -221,3 +235,34 @@ def logout():
     session.pop('user_username', None)
     flash('You have been logged out')
     return redirect(url_for('posts'))
+
+
+def csrf_token():
+    letters = string.ascii_letters + string.digits
+    return ''.join(random.choice(letters) for i in range(25))
+
+
+# compare_times checks if the specified time has passed, returning a boolean.
+def validate_session(session_user):
+    values = get_user_data(session_user, 'csrf_token')
+    valid_period = datetime.strptime(values[1], '%Y-%m-%d %H:%M:%S.%f') + timedelta(minutes=1)
+    compare_time(valid_period)
+
+
+def compare_time(comparison_time):
+    now = datetime.now()
+    if now > comparison_time:
+        return False
+    else:
+        return True
+
+
+def get_user_data(session_user, table_name):
+    raw_sql = 'SELECT * FROM "{}" WHERE user_id="{}"'.format(table_name, session_user)
+    # flash(raw_sql)  # Flash the SQL for testing and debugging
+    results = db.session.execute(raw_sql)
+    values = results.first()
+    return values
+
+def test_get_table(session_user):
+    get_user_data(session_user, 'post')
