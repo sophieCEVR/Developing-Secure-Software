@@ -23,3 +23,9 @@ class Post(db.Model):
     body = db.Column(db.String(256), nullable=False)
     create_time = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     update_time = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+
+class CSRFToken(db.Model):
+    token = db.Column(db.String(25), primary_key=True)
+    valid_from = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
