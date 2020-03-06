@@ -2,9 +2,10 @@
 
 from . import models  # Import models for validation
 from . import validators  # Import validators for validation (custom validators, NOT builtin wtforms.validators)
-
 from flask_wtf import FlaskForm
 from wtforms import fields
+
+from .captcha import Captcha
 
 
 class CreateAccountForm(FlaskForm):
@@ -24,6 +25,10 @@ class CreateAccountForm(FlaskForm):
     passwordConfirm = fields.PasswordField('Confirm Password*:', validators=[
         validators.Required(),
         validators.EqualTo('password')
+    ])
+    captcha = fields.StringField('Complete the sum below*:' , validators=[
+        validators.Required(),
+        validators.Length(min_length=1, max_length=2)
     ])
     submit = fields.SubmitField('Create Account')
 

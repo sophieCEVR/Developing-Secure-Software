@@ -5,6 +5,7 @@ from wtforms import ValidationError  # Raise wtforms ValidationError whenever da
 from collections.abc import Iterable  # Used to check if data is Iterable for various validators
 from string import ascii_letters, digits  # Used to check if data has alphabetic and/or numeric characters
 
+from .captcha import Captcha
 
 class Required(object):
     def __init__(self, message=None):
@@ -104,3 +105,5 @@ class NotContainAny(object):
         for i in self.check:
             if str(i) in str(field.data):
                 raise ValidationError(self.message)
+
+

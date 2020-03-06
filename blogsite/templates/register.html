@@ -34,6 +34,17 @@
             {% endfor %}
         </p>
         <p>
+            {{ form.captcha.label|safe }}
+            <br>
+            {{thecaptchasum}}
+            <br>
+            {{ form.captcha|safe }}
+            {% for error in form.captcha.errors %}
+            <br>
+            <span style="color: red">[{{ error|safe }}]</span>
+            {% endfor %}
+        </p>
+        <p>
             {{ form.submit|safe }}
         </p>
     </form>

@@ -14,6 +14,8 @@ import time
 import random
 import string
 
+from .captcha import Captcha
+
 account_enumeration_times = {'posts_user_username': dict()}
 
 
@@ -155,33 +157,48 @@ def delete_post(post_id=None):
             return redirect(url_for('posts'))
 
 
+
+
+
 @app.route('/register', methods=['GET', 'POST'])
 def register():
+
     if session.get('user_id'):
         flash('Please logout before creating a new account!')
         return redirect(url_for('posts'))
     else:
         form = forms.CreateAccountForm()
+        thecaptcha = forms.Captcha
         if request.method == 'POST' and form.validate():
+            print(thecaptcha.sumasstring(), form.captcha.data)
             cleanusername = sanitise.all(form.username.data)
             cleanpassword = sanitise.all(form.password.data)
-            raw_sql = 'SELECT * FROM user WHERE username="{}" AND password="{}"'.format(
-                cleanusername, cleanpassword
-            )
-            # flash(raw_sql)  # Flash the SQL for testing and debugging
-            the_user = db.session.execute(raw_sql).first()
-            if not the_user:
-                values = [cleanusername, cleanpassword]
-                raw_sql = 'INSERT INTO user (username, password) VALUES ({})'.format(
-                    ', '.join('"{}"'.format(str(v)) for v in values)
+            cleancaptcha = sanitise.all(form.captcha.data)
+            print(cleancaptcha)
+            if thecaptcha.checkinput(cleancaptcha):
+                print(thecaptcha.checkinput(cleancaptcha))
+                raw_sql = 'SELECT * FROM user WHERE username="{}" AND password="{}"'.format(
+                    cleanusername, cleanpassword
                 )
                 # flash(raw_sql)  # Flash the SQL for testing and debugging
-                db.session.execute(raw_sql)
-                db.session.commit()
-            flash('If this account did not already exist, you have created an account')
-            return redirect(url_for('login'))
-        return render_template('register.html', form=form, title='Create Account')
+                the_user = db.session.execute(raw_sql).first()
+                if not the_user:
+                    values = [cleanusername, cleanpassword]
+                    raw_sql = 'INSERT INTO user (username, password) VALUES ({})'.format(
+                        ', '.join('"{}"'.format(str(v)) for v in values)
+                    )
+                    # flash(raw_sql)  # Flash the SQL for testing and debugging
+                    db.session.execute(raw_sql)
+                    db.session.commit()
+                flash('You have created an account')
+                return redirect(url_for('login'))
+            else:
+                print(thecaptcha.checkinput(cleancaptcha))
+                print(thecaptcha.sumasstring(), thecaptcha.sum(), cleancaptcha)
+                flash('Please do the maths correctly... MUG')
+                return redirect(url_for('register'))
 
+        return render_template('register.html', form=form, title='Create Account', thecaptchasum = thecaptcha.sumasstring())
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
