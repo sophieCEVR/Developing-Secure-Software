@@ -207,15 +207,7 @@ def login():
             if wait_time > 0:
                 time.sleep(wait_time)
             if the_user:
-
-                values = [csrf_token(), datetime.utcnow(), the_user.id]
-                raw_sql = 'INSERT INTO csrf_token (token, valid_from, user_id) VALUES({})'.format(
-                    ', '.join('"{}"'.format(str(v)) for v in values)
-                )
-                # flash(raw_sql)  # Flash the SQL for testing and debugging
-                db.session.execute(raw_sql)
-                db.session.commit()
-                session['user_csrf'] = values[0]
+                create_csrf(the_user)
                 session.pop('login_attempts', None)  # Successful login, forget login attempts
                 session['user_id'] = the_user.id  # Log the user in (account operations depend on user_id)
                 session['user_username'] = the_user.username
@@ -247,6 +239,18 @@ def logout():
     session.pop('user_username', None)
     flash('You have been logged out')
     return redirect(url_for('posts'))
+
+
+def create_csrf(the_user):
+    values = [csrf_token(), datetime.utcnow(), the_user.id]
+    raw_sql = 'INSERT INTO csrf_token (token, valid_from, user_id) VALUES({})'.format(
+        ', '.join('"{}"'.format(str(v)) for v in values)
+    )
+    # flash(raw_sql)  # Flash the SQL for testing and debugging
+    db.session.execute(raw_sql)
+    db.session.commit()
+    session['user_csrf'] = values[0]
+    return
 
 
 def csrf_token():
