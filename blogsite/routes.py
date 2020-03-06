@@ -207,6 +207,7 @@ def login():
             if wait_time > 0:
                 time.sleep(wait_time)
             if the_user:
+
                 values = [csrf_token(), datetime.utcnow(), the_user.id]
                 raw_sql = 'INSERT INTO csrf_token (token, valid_from, user_id) VALUES({})'.format(
                     ', '.join('"{}"'.format(str(v)) for v in values)
@@ -214,6 +215,7 @@ def login():
                 # flash(raw_sql)  # Flash the SQL for testing and debugging
                 db.session.execute(raw_sql)
                 db.session.commit()
+                session['user_csrf'] = values[0]
                 session.pop('login_attempts', None)  # Successful login, forget login attempts
                 session['user_id'] = the_user.id  # Log the user in (account operations depend on user_id)
                 session['user_username'] = the_user.username
@@ -261,15 +263,15 @@ def validate_session():
     values = results.first()
 
     valid_period = datetime.strptime(values[1], '%Y-%m-%d %H:%M:%S.%f') + timedelta(minutes=1)
-    valid_session = compare_time(valid_period)
 
-    if valid_session:
-        raw_sql = 'UPDATE csrf_token SET token="{}", valid_from="{}" WHERE user_id="{}";'.format(
-            csrf_token(), datetime.utcnow(), session_user)
-        # flash(raw_sql)  # Flash the SQL for testing and debugging
-        db.session.execute(raw_sql)
-        db.session.commit()
-        return True
+    if compare_time(valid_period):
+        if check_csrf(values[0]):
+            raw_sql = 'UPDATE csrf_token SET token="{}", valid_from="{}" WHERE user_id="{}";'.format(
+                csrf_token(), datetime.utcnow(), session_user)
+            # flash(raw_sql)  # Flash the SQL for testing and debugging
+            db.session.execute(raw_sql)
+            db.session.commit()
+            return True
     else:
         flash('Session expired, please login again.')
         logout()
@@ -283,3 +285,14 @@ def compare_time(comparison_time):
         return True
     else:
         return False
+
+
+# Checks the CSRFToken held in the cookie matches that of the CSRFToken in the DB
+def check_csrf(db_token):
+    session_token = session.get('user_csrf')
+    print(session_token + "--------SessionCSRF")
+    print(db_token + "--------dbCSRF")
+    if session_token == db_token:
+        return True
+    return False
+
