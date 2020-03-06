@@ -53,11 +53,13 @@ def validate_session():
 
     if compare_time(valid_period):
         if check_csrf(values[0]):
+            token = csrf_token()
             raw_sql = 'UPDATE csrf_token SET token="{}", valid_from="{}" WHERE user_id="{}";'.format(
-                csrf_token(), datetime.utcnow(), session_user)
+                 token, datetime.utcnow(), session_user)
             # flash(raw_sql)
             db.session.execute(raw_sql)
             db.session.commit()
+            session['user_csrf'] = token
             return True
     else:
         flash('Session expired, please login again.')
@@ -74,7 +76,7 @@ def compare_time(comparison_time):
         return False
 
 
-# Checks the CSRFToken held in the cookie matches that of the CSRFToken in the DB
+# Checks the CSRFToken held in the session matches that of the CSRFToken in the DB
 def check_csrf(db_token):
     session_token = session.get('user_csrf')
     print(session_token + "--------SessionCSRF")

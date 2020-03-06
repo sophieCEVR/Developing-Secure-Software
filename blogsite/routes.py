@@ -20,12 +20,15 @@ account_enumeration_times = {'posts_user_username': dict()}
 @app.route('/')
 @app.route('/about')
 def about():
+    if session.get('user_id'):
+        flash(csrf.validate_session())
     return render_template('about.html', title='About')
 
 
 @app.route('/posts')
 def posts():
-    all_posts = []
+    if session.get('user_id'):
+        flash(csrf.validate_session())
     post_usernames = {}
     raw_sql = 'SELECT * FROM post ORDER BY update_time DESC'
     all_posts = db.session.execute(raw_sql).fetchall()
@@ -52,6 +55,7 @@ def posts_post_id(post_id=None):
         raw_sql = 'SELECT username FROM user WHERE id="{}"'.format(cleanthepostuserid)
         the_user = db.session.execute(raw_sql).first()
         if the_user:
+            flash(csrf.validate_session())
             post_usernames[the_post.id] = the_user.username
     return render_template('posts.html', posts=all_posts, post_usernames=post_usernames, title='Posts')
 
@@ -67,6 +71,7 @@ def posts_user_username(user_username=None):
     # flash(raw_sql)  # Flash the SQL for testing and debugging
     the_user = db.session.execute(raw_sql).first()
     if the_user:
+        flash(csrf.validate_session())
         cleantheuserid = sanitise.all(the_user.id)
         raw_sql = 'SELECT * FROM post WHERE user_id="{}" ORDER BY update_time DESC'.format(cleantheuserid)
         all_posts = db.session.execute(raw_sql).fetchall()
@@ -102,7 +107,7 @@ def create_post():
         flash('You must log in to create a post!')
         return redirect(url_for('login'))
     else:
-        csrf.validate_session()
+        flash(csrf.validate_session())
         form = forms.CreatePostForm()
 
         if request.method == 'POST' and form.validate():
@@ -110,7 +115,7 @@ def create_post():
             raw_sql = 'SELECT id FROM user WHERE id="{}"'.format(cleansessionid)
             # flash(raw_sql)  # Flash the SQL for testing and debugging
             the_user = db.session.execute(raw_sql).first()
-            if the_user:  # Only create a post if the user exists
+            if the_user:  # Only create a post if the user exist
                 cleanformtitle = sanitise.all(form.title.data)
                 cleanformbody = sanitise.all(form.body.data)
                 values = [cleansessionid, cleanformtitle, cleanformbody, datetime.utcnow(), datetime.utcnow()]
