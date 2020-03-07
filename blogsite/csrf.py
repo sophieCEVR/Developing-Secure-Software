@@ -79,8 +79,6 @@ def compare_time(comparison_time):
 # Checks the CSRFToken held in the session matches that of the CSRFToken in the DB
 def check_csrf(db_token):
     session_token = session.get('user_csrf')
-    print(session_token + "--------SessionCSRF")
-    print(db_token + "--------dbCSRF")
     if session_token == db_token:
         return True
     return False
