@@ -1,9 +1,12 @@
 # File containing the routes for blogsite
 from typing import Optional, Any
 
-from . import app, sanitise, csrf  # import the app object from the current package
+from . import app  # import the app object from the current package
 from . import db  # import the db object from the current package
 
+from . import csrf  # import csrf
+from . import sanitise  # import sanitisation functions
+from . import hashing  # import hashing functions
 from . import forms  # import forms
 from . import models  # import models
 
@@ -97,8 +100,8 @@ def posts_user_username(user_username=None):
                          - account_enumeration_times['posts_user_username']['failure'])
     if wait_time > 0:
         time.sleep(wait_time)
-    # flash(account_enumeration_times.get('posts_user_username'))  # Flash data for testing and debugging
-    # flash('Wait Time = ' + str(wait_time))  # Flash wait time for testing and debugging
+    #flash(account_enumeration_times.get('posts_user_username'))  # Flash data for testing and debugging
+    #flash('Wait Time = ' + str(wait_time))  # Flash wait time for testing and debugging
     return render_template('posts.html', posts=all_posts, post_usernames=post_usernames, title='Posts')
 
 
@@ -172,17 +175,17 @@ def register():
         if request.method == 'POST' and form.validate():
             cleanusername = sanitise.all(form.username.data)
             cleanpassword = sanitise.all(form.password.data)
-            raw_sql = 'SELECT * FROM user WHERE username="{}" AND password="{}"'.format(
-                cleanusername, cleanpassword
-            )
+            raw_sql = 'SELECT * FROM user WHERE username="{}"'.format(cleanusername)
             # flash(raw_sql)  # Flash the SQL for testing and debugging
             the_user = db.session.execute(raw_sql).first()
-            if not the_user:
-                values = [cleanusername, cleanpassword]
-                raw_sql = 'INSERT INTO user (username, password) VALUES ({})'.format(
+            if not the_user:  # Only create account if a user with a given name does not exist (username is unique)
+                salt = hashing.generate_salt()
+                password_hashed = hashing.generate_hash(cleanpassword, salt=salt, pepper=app.config.get('SECRET_KEY', 'no_secret_key'))
+                values = [cleanusername, password_hashed, salt]
+                raw_sql = 'INSERT INTO user (username, password, salt) VALUES ({})'.format(
                     ', '.join('"{}"'.format(str(v)) for v in values)
                 )
-                # flash(raw_sql)  # Flash the SQL for testing and debugging
+                #flash(raw_sql)  # Flash the SQL for testing and debugging
                 db.session.execute(raw_sql)
                 db.session.commit()
             flash('If this account did not already exist, you have created an account')
@@ -199,17 +202,22 @@ def login():
     else:
         form = forms.LoginForm()
         if request.method == 'POST' and form.validate():
-            cleanUsername = sanitise.all(form.username.data)
-            cleanPassword = sanitise.all(form.password.data)
-            raw_sql = 'SELECT * FROM user WHERE username="{}" AND password="{}"'.format(
-                cleanUsername, cleanPassword
-            )
+            cleanusername = sanitise.all(form.username.data)
+            cleanpassword = sanitise.all(form.password.data)
+            raw_sql = 'SELECT * FROM user WHERE username="{}"'.format(cleanusername)
             # flash(raw_sql)  # Flash the SQL for testing and debugging
-            the_user = db.session.execute(raw_sql).first()
-            if not session.get('login_attempts'):
+            user_candidates = db.session.execute(raw_sql).fetchall()  # Get possible users from username
+            the_user = None
+            if user_candidates:  # For every candidate, check if password hashes match
+                for usr in user_candidates:
+                    password_hashed = hashing.generate_hash(cleanpassword, salt=usr.salt, pepper=app.config.get('SECRET_KEY', 'no_secret_key'))
+                    if usr.password == password_hashed:  # Match found - proceed to login
+                        the_user = usr
+                        break
+            if not session.get('login_attempts'):  # Define login attempts if not already present
                 session['login_attempts'] = 1
             x = max(0, session['login_attempts'] - 2)  # Only stall login process after 2 unsuccessful login attempts
-            wait_time = (5 * x) / (x + 1)
+            wait_time = (5 * x) / (x + 1)  # Calculate wait time using equation
             # flash("Login Attempt " + str(session['login_attempts']))  # Flash login attempts for testing and debugging
             # flash("Wait Time = " + str(wait_time))  # Flash wait time for testing and debugging
             if wait_time > 0:
@@ -222,8 +230,8 @@ def login():
                 session['user_username'] = the_user.username
                 flash('You have logged in as ' + str(the_user.username))
                 return redirect(url_for('posts'))
-            else:  # Unsuccessful login, increment login attempts
-                session['login_attempts'] = min(32, session['login_attempts'] + 1)
+            else:  # Unsuccessful login
+                session['login_attempts'] = min(32, session['login_attempts'] + 1)  # increment login attempts
                 flash('Invalid username and/or password')
         # flash(form.errors)  # Flash form errors for testing and debugging
         return render_template('login.html', form=form, title='Login')
