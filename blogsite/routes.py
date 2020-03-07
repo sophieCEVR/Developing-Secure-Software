@@ -23,12 +23,15 @@ account_enumeration_times = {'posts_user_username': dict()}
 @app.route('/')
 @app.route('/about')
 def about():
+    if session.get('user_id'):
+        csrf.validate_session()
     return render_template('about.html', title='About')
 
 
 @app.route('/posts')
 def posts():
-    all_posts = []
+    if session.get('user_id'):
+        csrf.validate_session()
     post_usernames = {}
     raw_sql = 'SELECT * FROM post ORDER BY update_time DESC'
     all_posts = db.session.execute(raw_sql).fetchall()
@@ -55,12 +58,15 @@ def posts_post_id(post_id=None):
         raw_sql = 'SELECT username FROM user WHERE id="{}"'.format(cleanthepostuserid)
         the_user = db.session.execute(raw_sql).first()
         if the_user:
+            csrf.validate_session()
             post_usernames[the_post.id] = the_user.username
     return render_template('posts.html', posts=all_posts, post_usernames=post_usernames, title='Posts')
 
 
 @app.route('/posts/account/<user_username>')
 def posts_user_username(user_username=None):
+    if session.get('user_id'):
+        csrf.validate_session()
     wait_time = 0  # Initial time to wait
     start_time = time.time()  # Begin timing the process
     all_posts = []
@@ -113,7 +119,7 @@ def create_post():
             raw_sql = 'SELECT id FROM user WHERE id="{}"'.format(cleansessionid)
             # flash(raw_sql)  # Flash the SQL for testing and debugging
             the_user = db.session.execute(raw_sql).first()
-            if the_user:  # Only create a post if the user exists
+            if the_user:  # Only create a post if the user exist
                 cleanformtitle = sanitise.all(form.title.data)
                 cleanformbody = sanitise.all(form.body.data)
                 values = [cleansessionid, cleanformtitle, cleanformbody, datetime.utcnow(), datetime.utcnow()]
@@ -161,6 +167,7 @@ def delete_post(post_id=None):
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if session.get('user_id'):
+        csrf.validate_session()
         flash('Please logout before creating a new account!')
         return redirect(url_for('posts'))
     else:
@@ -189,6 +196,7 @@ def register():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if session.get('user_id'):  # redirect to home if logged in
+        csrf.validate_session()
         flash('You are already logged in!')
         return redirect(url_for('posts'))
     else:
