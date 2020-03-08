@@ -104,3 +104,36 @@ class NotContainAny(object):
         for i in self.check:
             if str(i) in str(field.data):
                 raise ValidationError(self.message)
+
+
+class MustContain(object):
+    def __init__(self, check, message=None):
+        if not isinstance(check, Iterable):
+            raise TypeError('MustContain validator requires validation data to be Iterable')
+        self.check = check
+        if message:
+            self.message = message
+        else:
+            self.message = u'Field must contain the following terms: {}'.format(self.check)
+
+    def __call__(self, form, field):
+        for i in self.check:
+            if str(i) not in str(field.data):
+                raise ValidationError(self.message)
+
+
+class MustContainRegex(object):
+    def __init__(self, message=None):
+        if message:
+            self.message = message
+        else:
+            self.message = u'Invalid Email Address'.format()
+
+    def __call__(self, form, field):
+        regex = '^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$'
+        if not re.search(regex, field.data):
+            raise ValidationError(self.message)
+
+
+
+

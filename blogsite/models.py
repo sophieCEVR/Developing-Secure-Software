@@ -10,6 +10,7 @@ class User(db.Model):
     username = db.Column(db.String(64), unique=True, nullable=False)
     password = db.Column(db.String(128), nullable=False)
     salt = db.Column(db.String(32), nullable=False)
+    verified = db.Column(db.Boolean, default=False)
     posts = db.relationship('Post', backref='author')
 
     def __repr__(self):

@@ -19,18 +19,17 @@ import string
 
 account_enumeration_times = {'posts_user_username': dict()}
 
-
 @app.route('/')
 @app.route('/about')
 def about():
-    if session.get('user_id'):
+    if session.get('active'):
         csrf.validate_session()
     return render_template('about.html', title='About')
 
 
 @app.route('/posts')
 def posts():
-    if session.get('user_id'):
+    if session.get('active'):
         csrf.validate_session()
     post_usernames = {}
     raw_sql = 'SELECT * FROM post ORDER BY update_time DESC'
@@ -65,7 +64,7 @@ def posts_post_id(post_id=None):
 
 @app.route('/posts/account/<user_username>')
 def posts_user_username(user_username=None):
-    if session.get('user_id'):
+    if session.get('active'):
         csrf.validate_session()
     wait_time = 0  # Initial time to wait
     start_time = time.time()  # Begin timing the process
@@ -110,7 +109,7 @@ def posts_user_username(user_username=None):
 
 @app.route('/posts/create', methods=['GET', 'POST'])
 def create_post():
-    if not session.get('user_id'):
+    if not session.get('active'):
         flash('You must log in to create a post!')
         return redirect(url_for('login'))
     else:
@@ -142,8 +141,9 @@ def create_post():
 
 @app.route('/posts/delete', methods=['POST'])
 def delete_post(post_id=None):
-    if not session.get('user_id'):
+    if not session.get('active'):
         flash('You must log in to delete a post!')
+        logout()
         return redirect(url_for('login'))
     elif not request.form.get('post_id'):
         flash('You must provide an id to delete a post!')
@@ -169,7 +169,7 @@ def delete_post(post_id=None):
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    if session.get('user_id'):
+    if session.get('active'):
         csrf.validate_session()
         flash('Please logout before creating a new account!')
         return redirect(url_for('posts'))
@@ -198,7 +198,7 @@ def register():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if session.get('user_id'):  # redirect to home if logged in
+    if session.get('active'): # redirect to home if logged in
         csrf.validate_session()
         flash('You are already logged in!')
         return redirect(url_for('posts'))
@@ -228,6 +228,7 @@ def login():
             if the_user:
                 csrf.create_token(the_user)
 
+                session['active'] = True
                 session.pop('login_attempts', None)  # Successful login, forget login attempts
                 session['user_id'] = the_user.id  # Log the user in (account operations depend on user_id)
                 session['user_username'] = the_user.username
@@ -247,7 +248,9 @@ def logout():
     results = db.session.execute(csrf_token_check).first()
     if results is not None:
         csrf.delete_token()
+        session['active'] = False
     session.pop('user_id', None)
     session.pop('user_username', None)
     flash('You have been logged out')
     return redirect(url_for('posts'))
+

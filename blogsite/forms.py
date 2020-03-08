@@ -5,6 +5,7 @@ from . import validators  # Import validators for validation (custom validators,
 
 from flask_wtf import FlaskForm
 from wtforms import fields
+import re
 
 
 class CreateAccountForm(FlaskForm):
@@ -24,6 +25,11 @@ class CreateAccountForm(FlaskForm):
     passwordConfirm = fields.PasswordField('Confirm Password*:', validators=[
         validators.Required(),
         validators.EqualTo('password')
+    ])
+    email = fields.StringField('Email*:', validators=[
+        validators.Required(),
+        validators.MustContainRegex(),
+        validators.NotContainAny([' ', '&', '<', '>', '/', '\\', "'", '"', ',', '=', '-', '+'])
     ])
     submit = fields.SubmitField('Create Account')
 
