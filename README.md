@@ -21,6 +21,10 @@ User requirements.txt to install all necessary requirements
     * Flask
     * SQLAlchemy
     * WTForms 
+    * pyopenssl
+    
+    Alternatively, you can also use the command line to install these requirements, in the form of 
+    ```pip install pyopenssl``` replacing with the relevant instruction for each package.
 * Database configuration
     * Database is an sqlite database
     * Database location is blogsite/blogsiteDatabase.db
