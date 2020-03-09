@@ -107,14 +107,11 @@ class NotContainAny(object):
                 raise ValidationError(self.message)
 
 
-class CaptchaValidator():
-    def __init__(self, message=None):
-        if message:
-            self.message = self.message
-        else:
-            self.message = u'Incorrect Maths'
-
-    def __call__(self, thecaptcha, field):
-        print(field)
-        if thecaptcha != field.data:
-            raise ValidationError(self.message)
+# class CaptchaValidator(Captcha):
+#     def __init__(self, captcha):
+#         self.captcha = Captcha
+#
+#     def __call__(self, field):
+#         print(field)
+#         if self.captcha != field.data:
+#             raise ValidationError(u'Incorrect Maths')

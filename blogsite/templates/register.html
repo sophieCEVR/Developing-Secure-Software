@@ -36,6 +36,8 @@
         <p>
             {{ form.captcha.label|safe }}
             <br>
+            {{thecaptcha}}
+            <br>
             {{ form.captcha|safe }}
             {% for error in form.captcha.errors %}
             <br>

@@ -9,7 +9,6 @@ from .captcha import Captcha
 
 
 class CreateAccountForm(FlaskForm):
-    thecaptcha = Captcha()
     username = fields.StringField('Username*:', validators=[
         validators.Required(),
         validators.AlphaNumeric(),
@@ -27,10 +26,10 @@ class CreateAccountForm(FlaskForm):
         validators.Required(),
         validators.EqualTo('password')
     ])
-    captcha = fields.StringField('Complete the sum: ' + thecaptcha.sumasstring() , validators=[
+    captcha = fields.StringField('Complete the sum: ', validators=[
         validators.Required(),
         validators.Length(min_length=1, max_length=2),
-        validators.CaptchaValidator(thecaptcha)
+        # validators.CaptchaValidator(thecaptcha)
     ])
     submit = fields.SubmitField('Create Account')
 

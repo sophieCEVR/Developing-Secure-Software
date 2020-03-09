@@ -157,11 +157,11 @@ def delete_post(post_id=None):
             return redirect(url_for('posts'))
 
 
-
-
-
 @app.route('/register', methods=['GET', 'POST'])
 def register():
+    if request.method == 'GET':
+        thecaptcha = Captcha()
+        print(thecaptcha.sumasstring())
     if session.get('user_id'):
         flash('Please logout before creating a new account!')
         return redirect(url_for('posts'))
@@ -186,7 +186,8 @@ def register():
                 db.session.commit()
             flash('You have created an account')
             return redirect(url_for('login'))
-        return render_template('register.html', form=form, title='Create Account')
+    return render_template('register.html', form=form, thecaptcha=thecaptcha.sumasstring(), title='Create Account')
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
