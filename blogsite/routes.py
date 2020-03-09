@@ -177,19 +177,19 @@ def register():
     else:
         form = forms.CreateAccountForm()
         if request.method == 'POST' and form.validate():
-            cleanusername = sanitise.all(form.username.data)
-            cleanpassword = sanitise.all(form.password.data)
-            email = form.email.data
+            clean_username = sanitise.all(form.username.data)
+            clean_password = sanitise.all(form.password.data)
+            clean_email = sanitise.all_except(form.email.data, ['@', '.'])
 
-            raw_sql = 'SELECT * FROM user WHERE username="{}"'.format(cleanusername)
+            raw_sql = 'SELECT * FROM user WHERE username="{}"'.format(clean_username)
             # flash(raw_sql)  # Flash the SQL for testing and debugging
             the_user = db.session.execute(raw_sql).first()
 
             if not the_user:  # Only create account if a user with a given name does not exist (username is unique)
                 salt = hashing.generate_salt()
-                password_hashed = hashing.generate_hash(cleanpassword, salt=salt, pepper=app.config.get('SECRET_KEY', 'no_secret_key'))
-                email_hashed = hashing.generate_hash(email, salt=salt, pepper=app.config.get('SECRET_KEY', 'no_secret_key'))
-                values = [cleanusername, password_hashed, salt, email_hashed]
+                password_hashed = hashing.generate_hash(clean_password, salt=salt, pepper=app.config.get('SECRET_KEY', 'no_secret_key'))
+                email_hashed = hashing.generate_hash(clean_email, salt=salt, pepper=app.config.get('SECRET_KEY', 'no_secret_key'))
+                values = [clean_username, password_hashed, salt, email_hashed]
                 raw_sql = 'INSERT INTO user (username, password, salt, email) VALUES ({})'.format(
                     ', '.join('"{}"'.format(str(v)) for v in values)
                 )

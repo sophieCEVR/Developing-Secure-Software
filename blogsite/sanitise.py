@@ -50,3 +50,19 @@ def all(data):
     for i in range(len(dirty)):
         clean = clean + str(sub(dirty[i]))
     return clean
+
+
+# allows you to sanitize all except specified characters. Good for emails.
+def all_except(data, allow):
+    dirty = str(data)
+    clean = ""
+    check = True
+    for i in range(len(dirty)):
+        for x in range(len(allow)):
+            if dirty[i] is allow[x]:
+                check = False
+                clean = clean + str(dirty[i])
+        if check:
+            clean = clean + str(sub(dirty[i]))
+        check = True
+    return clean
