@@ -4,6 +4,7 @@ from wtforms import ValidationError  # Raise wtforms ValidationError whenever da
 
 from collections.abc import Iterable  # Used to check if data is Iterable for various validators
 from string import ascii_letters, digits  # Used to check if data has alphabetic and/or numeric characters
+import re
 
 
 class Required(object):

@@ -12,9 +12,10 @@ if __name__ == '__main__':
     for i in range(0, 20, 1):
         username_string = 'username' + str(i)
         password_string = 'password' + str(i)
+        email_string = 'usr' + str(i) + '@email.com'
         salt = hashing.generate_salt()
         password_hash = hashing.generate_hash(password_string, salt=salt, pepper=app.config.get('SECRET_KEY', 'no_secret_key'))
-        db.session.add(models.User(username=username_string, password=password_hash, salt=salt))
+        db.session.add(models.User(username=username_string, password=password_hash, salt=salt, email=email_string))
         db.session.commit()
     # Add test posts
     allUsers = db.session.query(models.User)

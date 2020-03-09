@@ -19,6 +19,7 @@ import string
 
 account_enumeration_times = {'posts_user_username': dict()}
 
+
 @app.route('/')
 @app.route('/about')
 def about():
@@ -178,14 +179,17 @@ def register():
         if request.method == 'POST' and form.validate():
             cleanusername = sanitise.all(form.username.data)
             cleanpassword = sanitise.all(form.password.data)
+            email = form.email.data
+
             raw_sql = 'SELECT * FROM user WHERE username="{}"'.format(cleanusername)
             # flash(raw_sql)  # Flash the SQL for testing and debugging
             the_user = db.session.execute(raw_sql).first()
+
             if not the_user:  # Only create account if a user with a given name does not exist (username is unique)
                 salt = hashing.generate_salt()
                 password_hashed = hashing.generate_hash(cleanpassword, salt=salt, pepper=app.config.get('SECRET_KEY', 'no_secret_key'))
-                values = [cleanusername, password_hashed, salt]
-                raw_sql = 'INSERT INTO user (username, password, salt) VALUES ({})'.format(
+                values = [cleanusername, password_hashed, salt, email]
+                raw_sql = 'INSERT INTO user (username, password, salt, email) VALUES ({})'.format(
                     ', '.join('"{}"'.format(str(v)) for v in values)
                 )
                 #flash(raw_sql)  # Flash the SQL for testing and debugging
