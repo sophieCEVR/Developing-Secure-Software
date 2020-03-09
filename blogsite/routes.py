@@ -189,8 +189,8 @@ def register():
                 salt = hashing.generate_salt()
                 password_hashed = hashing.generate_hash(clean_password, salt=salt, pepper=app.config.get('SECRET_KEY', 'no_secret_key'))
                 email_hashed = hashing.generate_hash(clean_email, salt=salt, pepper=app.config.get('SECRET_KEY', 'no_secret_key'))
-                values = [clean_username, password_hashed, salt, email_hashed]
-                raw_sql = 'INSERT INTO user (username, password, salt, email) VALUES ({})'.format(
+                values = [clean_username, password_hashed, salt, email_hashed, 0]
+                raw_sql = 'INSERT INTO user (username, password, salt, email, confirmed_email) VALUES ({})'.format(
                     ', '.join('"{}"'.format(str(v)) for v in values)
                 )
                 #flash(raw_sql)  # Flash the SQL for testing and debugging
