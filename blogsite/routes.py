@@ -188,7 +188,8 @@ def register():
             if not the_user:  # Only create account if a user with a given name does not exist (username is unique)
                 salt = hashing.generate_salt()
                 password_hashed = hashing.generate_hash(cleanpassword, salt=salt, pepper=app.config.get('SECRET_KEY', 'no_secret_key'))
-                values = [cleanusername, password_hashed, salt, email]
+                email_hashed = hashing.generate_hash(email, salt=salt, pepper=app.config.get('SECRET_KEY', 'no_secret_key'))
+                values = [cleanusername, password_hashed, salt, email_hashed]
                 raw_sql = 'INSERT INTO user (username, password, salt, email) VALUES ({})'.format(
                     ', '.join('"{}"'.format(str(v)) for v in values)
                 )
