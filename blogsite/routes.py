@@ -9,6 +9,10 @@ from . import sanitise  # import sanitisation functions
 from . import hashing  # import hashing functions
 from . import forms  # import forms
 from . import models  # import models
+from . import email
+from . import token
+from flask_mail import Message
+from . import mail, app
 
 from flask import render_template, redirect, url_for, session, flash, request, escape
 
@@ -103,8 +107,8 @@ def posts_user_username(user_username=None):
                          - account_enumeration_times['posts_user_username']['failure'])
     if wait_time > 0:
         time.sleep(wait_time)
-    #flash(account_enumeration_times.get('posts_user_username'))  # Flash data for testing and debugging
-    #flash('Wait Time = ' + str(wait_time))  # Flash wait time for testing and debugging
+    # flash(account_enumeration_times.get('posts_user_username'))  # Flash data for testing and debugging
+    # flash('Wait Time = ' + str(wait_time))  # Flash wait time for testing and debugging
     return render_template('posts.html', posts=all_posts, post_usernames=post_usernames, title='Posts')
 
 
@@ -187,15 +191,24 @@ def register():
 
             if not the_user:  # Only create account if a user with a given name does not exist (username is unique)
                 salt = hashing.generate_salt()
-                password_hashed = hashing.generate_hash(clean_password, salt=salt, pepper=app.config.get('SECRET_KEY', 'no_secret_key'))
-                email_hashed = hashing.generate_hash(clean_email, salt=salt, pepper=app.config.get('SECRET_KEY', 'no_secret_key'))
-                values = [clean_username, password_hashed, salt, email_hashed]
-                raw_sql = 'INSERT INTO user (username, password, salt, email) VALUES ({})'.format(
+                password_hashed = hashing.generate_hash(clean_password, salt=salt,
+                                                        pepper=app.config.get('SECRET_KEY', 'no_secret_key'))
+                email_hashed = hashing.generate_hash(clean_email, salt=salt,
+                                                     pepper=app.config.get('SECRET_KEY', 'no_secret_key'))
+                values = [clean_username, password_hashed, salt, email_hashed, 0]
+                raw_sql = 'INSERT INTO user (username, password, salt, email, confirmed_email) VALUES ({})'.format(
                     ', '.join('"{}"'.format(str(v)) for v in values)
                 )
-                #flash(raw_sql)  # Flash the SQL for testing and debugging
+                # flash(raw_sql)  # Flash the SQL for testing and debugging
                 db.session.execute(raw_sql)
                 db.session.commit()
+
+                email_token = token.generate_confirmation_token(clean_email)
+                confirm_url = url_for('confirm_email', username=clean_username, email_token=email_token, _external=True)
+                html = render_template('activate.html', confirm_url=confirm_url)
+                subject = "Please confirm your email"
+                email.send_email(clean_email, subject, html)
+
             flash('If this account did not already exist, you have created an account')
             return redirect(url_for('login'))
         return render_template('register.html', form=form, title='Create Account')
@@ -203,7 +216,7 @@ def register():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if session.get('active'): # redirect to home if logged in
+    if session.get('active'):  # redirect to home if logged in
         csrf.validate_session()
         flash('You are already logged in!')
         return redirect(url_for('posts'))
@@ -215,10 +228,16 @@ def login():
             raw_sql = 'SELECT * FROM user WHERE username="{}"'.format(cleanusername)
             # flash(raw_sql)  # Flash the SQL for testing and debugging
             user_candidates = db.session.execute(raw_sql).fetchall()  # Get possible users from username
+
+            if user_candidates[0][5] != 1:
+                flash('Please verify the email for this account.')
+                # logout()
+                return redirect(url_for('logout'))
             the_user = None
             if user_candidates:  # For every candidate, check if password hashes match
                 for usr in user_candidates:
-                    password_hashed = hashing.generate_hash(cleanpassword, salt=usr.salt, pepper=app.config.get('SECRET_KEY', 'no_secret_key'))
+                    password_hashed = hashing.generate_hash(cleanpassword, salt=usr.salt,
+                                                            pepper=app.config.get('SECRET_KEY', 'no_secret_key'))
                     if usr.password == password_hashed:  # Match found - proceed to login
                         the_user = usr
                         break
@@ -259,3 +278,27 @@ def logout():
     flash('You have been logged out')
     return redirect(url_for('posts'))
 
+
+@app.route('/confirm')
+def confirm():
+    return render_template('confirmed.html')
+
+
+@app.route('/confirm/<username>/<email_token>')
+def confirm_email(username, email_token):
+    email_in = token.confirm_token(email_token)
+    clean_email = sanitise.all_except(email_in, ['@', '.'])
+
+    raw_sql = 'SELECT * FROM user WHERE username="{}"'.format(username)
+    # flash(raw_sql)  # Flash the SQL for testing and debugging
+    user = db.session.execute(raw_sql).fetchall()
+    hashed_email = hashing.generate_hash(clean_email, salt=user[0].salt,
+                                         pepper=app.config.get('SECRET_KEY', 'no_secret_key'))
+    if user[0][5] == 1:
+        flash('Account already confirmed. Please login.')
+    elif user[0][4] == hashed_email:
+        raw_sql = 'UPDATE user SET confirmed_email = 1 WHERE username="{}"'.format(username)
+        db.session.execute(raw_sql)
+        db.session.commit()
+        flash('You have confirmed your account. Thanks!')
+    return redirect(url_for('about'))

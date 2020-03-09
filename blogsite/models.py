@@ -11,6 +11,7 @@ class User(db.Model):
     password = db.Column(db.String(128), nullable=False)
     salt = db.Column(db.String(32), nullable=False)
     email = db.Column(db.String(32), unique=True, nullable=False)
+    confirmed_email = db.Column(db.Boolean, default=0)
     posts = db.relationship('Post', backref='author')
 
     def __repr__(self):

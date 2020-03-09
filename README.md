@@ -22,6 +22,7 @@ User requirements.txt to install all necessary requirements
     * SQLAlchemy
     * WTForms 
     * pyopenssl
+    * Flask-Mail
     
     Alternatively, you can also use the command line to install these requirements, in the form of 
     ```pip install pyopenssl``` replacing with the relevant instruction for each package.
