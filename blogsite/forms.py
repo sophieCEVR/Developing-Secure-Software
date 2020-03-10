@@ -11,6 +11,7 @@ import re
 class CreateAccountForm(FlaskForm):
     username = fields.StringField('Username*:', validators=[
         validators.Required(),
+        validators.NotInTableColumn('user', 'username'),
         validators.AlphaNumeric(),
         validators.Length(min_length=8, max_length=models.User.username.type.length),
         validators.NotContainAny([' ', '_', '&', '<', '>', '/', '\\', "'", '"', ',', '.', '=', '-', '+'])

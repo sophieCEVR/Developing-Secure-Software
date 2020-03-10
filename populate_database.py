@@ -18,13 +18,14 @@ if __name__ == '__main__':
                                               pepper=app.config.get('SECRET_KEY', 'no_secret_key'))
         email_hash = hashing.generate_hash(email_string, salt=salt,
                                            pepper=app.config.get('SECRET_KEY', 'no_secret_key'))
-        db.session.add(models.User(username=username_string, password=password_hash, salt=salt, email=email_hash))
+        db.session.add(models.User(username=username_string, password=password_hash, salt=salt, email=email_hash, confirmed_email=(i % 2)))
         db.session.commit()
     # Add test posts
     allUsers = db.session.query(models.User)
     for i in range(0, 20, 1):
         for usr in allUsers:
-            title_string = 'Test Post ' + str(i)
-            body_string = 'This is a generated post'
-            db.session.add(models.Post(title=title_string, body=body_string, author=usr))
+            if usr.confirmed_email != 0:
+                title_string = 'Test Post ' + str(i)
+                body_string = 'This is a generated post'
+                db.session.add(models.Post(title=title_string, body=body_string, author=usr))
         db.session.commit()

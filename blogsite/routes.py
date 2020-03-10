@@ -208,8 +208,8 @@ def register():
                 html = render_template('activate.html', confirm_url=confirm_url)
                 subject = "Please confirm your email"
                 email.send_email(clean_email, subject, html)
+                flash('An email has been sent to the provided email address. Please confirm your registration')
 
-            flash('If this account did not already exist, you have created an account')
             return redirect(url_for('login'))
         return render_template('register.html', form=form, title='Create Account')
 
@@ -291,14 +291,15 @@ def confirm_email(username, email_token):
 
     raw_sql = 'SELECT * FROM user WHERE username="{}"'.format(username)
     # flash(raw_sql)  # Flash the SQL for testing and debugging
-    user = db.session.execute(raw_sql).fetchall()
-    hashed_email = hashing.generate_hash(clean_email, salt=user[0].salt,
-                                         pepper=app.config.get('SECRET_KEY', 'no_secret_key'))
-    if user[0][5] == 1:
-        flash('Account already confirmed. Please login.')
-    elif user[0][4] == hashed_email:
-        raw_sql = 'UPDATE user SET confirmed_email = 1 WHERE username="{}"'.format(username)
-        db.session.execute(raw_sql)
-        db.session.commit()
-        flash('You have confirmed your account. Thanks!')
+    user = db.session.execute(raw_sql).first()
+    if user:
+        hashed_email = hashing.generate_hash(clean_email, salt=user.salt,
+                                             pepper=app.config.get('SECRET_KEY', 'no_secret_key'))
+        if user.confirmed_email == 1:
+            flash('Account already confirmed. Please login.')
+        elif user.email == hashed_email:
+            raw_sql = 'UPDATE user SET confirmed_email = 1 WHERE username="{}"'.format(username)
+            db.session.execute(raw_sql)
+            db.session.commit()
+            flash('You have confirmed your account. Thanks!')
     return redirect(url_for('about'))

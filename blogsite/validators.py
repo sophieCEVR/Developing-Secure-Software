@@ -1,10 +1,31 @@
 # File containing validators for forms - data validation is a part of security so we must use our own data validators
 
+from . import db  # Import database for use in validation
+
+from . import sanitise  # Some data may have to be sanitised if validating with database
+
 from wtforms import ValidationError  # Raise wtforms ValidationError whenever data is invalid
 
 from collections.abc import Iterable  # Used to check if data is Iterable for various validators
 from string import ascii_letters, digits  # Used to check if data has alphabetic and/or numeric characters
 import re
+
+
+class NotInTableColumn(object):
+    def __init__(self, table, column_name, message=None):
+        self.table = str(table)
+        self.column_name = str(column_name)
+        if message:
+            self.message = message
+        else:
+            self.message = u'Field is invalid'
+
+    def __call__(self, form, field):
+        if field.data:
+            raw_sql = 'SELECT * FROM ' + self.table + ' WHERE ' + self.column_name + '="{}"'.format(sanitise.all(field.data))
+            existing_user = db.session.execute(raw_sql).first()
+            if existing_user:
+                raise ValidationError(self.message)
 
 
 class Required(object):
