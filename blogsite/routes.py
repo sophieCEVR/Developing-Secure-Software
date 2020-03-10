@@ -229,10 +229,6 @@ def login():
             # flash(raw_sql)  # Flash the SQL for testing and debugging
             user_candidates = db.session.execute(raw_sql).fetchall()  # Get possible users from username
 
-            if user_candidates[0][5] != 1:
-                flash('Please verify the email for this account.')
-                # logout()
-                return redirect(url_for('logout'))
             the_user = None
             if user_candidates:  # For every candidate, check if password hashes match
                 for usr in user_candidates:
@@ -250,6 +246,10 @@ def login():
             if wait_time > 0:
                 time.sleep(wait_time)
             if the_user:
+                if the_user.confirmed_email != 1:
+                    flash('Please verify the email for this account.')
+                    # logout()
+                    return redirect(url_for('logout'))
                 csrf.create_token(the_user)
 
                 session['active'] = True
