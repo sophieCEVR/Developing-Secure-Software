@@ -5,8 +5,6 @@ from . import validators  # Import validators for validation (custom validators,
 from flask_wtf import FlaskForm
 from wtforms import fields
 
-from .captcha import Captcha
-
 
 class CreateAccountForm(FlaskForm):
     username = fields.StringField('Username*:', validators=[
@@ -28,8 +26,7 @@ class CreateAccountForm(FlaskForm):
     ])
     captcha = fields.StringField('Complete the sum: ', validators=[
         validators.Required(),
-        validators.Length(min_length=1, max_length=2),
-        # validators.CaptchaValidator(thecaptcha)
+        validators.Length(min_length=1, max_length=2)
     ])
     submit = fields.SubmitField('Create Account')
 

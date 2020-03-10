@@ -107,7 +107,7 @@ class NotContainAny(object):
                 raise ValidationError(self.message)
 
 
-# class CaptchaValidator(Captcha):
+# class CaptchaVal(Captcha):
 #     def __init__(self, captcha):
 #         self.captcha = Captcha
 #

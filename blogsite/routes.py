@@ -156,21 +156,21 @@ def delete_post(post_id=None):
             flash('Your post has been deleted')
             return redirect(url_for('posts'))
 
+thecaptcha = Captcha()
+
 
 @app.route('/register', methods=['GET', 'POST'])
-def register():
-    if request.method == 'GET':
-        thecaptcha = Captcha()
-        print(thecaptcha.sumasstring())
+def register(thecaptcha=thecaptcha):
     if session.get('user_id'):
         flash('Please logout before creating a new account!')
         return redirect(url_for('posts'))
     else:
         form = forms.CreateAccountForm()
-        if request.method == 'POST' and form.validate():
+        if request.method == 'POST' and form.validate() and thecaptcha.checkinput(form.captcha.data):
+            print(thecaptcha.sumasstring() + str(form.captcha.data))
+            print(thecaptcha.checkinput(form.captcha.data))
             cleanusername = sanitise.all(form.username.data)
             cleanpassword = sanitise.all(form.password.data)
-            cleancaptcha = sanitise.all(form.captcha.data)
             raw_sql = 'SELECT * FROM user WHERE username="{}" AND password="{}"'.format(
                 cleanusername, cleanpassword
             )
@@ -184,8 +184,15 @@ def register():
                 # flash(raw_sql)  # Flash the SQL for testing and debugging
                 db.session.execute(raw_sql)
                 db.session.commit()
+
             flash('You have created an account')
             return redirect(url_for('login'))
+        elif request.method == 'POST' and form.validate() and not thecaptcha.checkinput(form.captcha.data):
+            thecaptcha = Captcha()
+            flash("Incorrect Maths")
+            return render_template('register.html', form=form, thecaptcha=thecaptcha.sumasstring(),
+                                       title='Create Account')
+
     return render_template('register.html', form=form, thecaptcha=thecaptcha.sumasstring(), title='Create Account')
 
 
