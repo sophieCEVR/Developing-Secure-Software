@@ -49,6 +49,7 @@ def validate_session():
     # flash(raw_sql)
     results = db.session.execute(raw_sql)
     values = results.first()
+    # In production, validity period would be set to 20 minutes as per OWASP recommendation.
     valid_period = datetime.strptime(values[1], '%Y-%m-%d %H:%M:%S.%f') + timedelta(minutes=1)
 
     if compare_time(valid_period):

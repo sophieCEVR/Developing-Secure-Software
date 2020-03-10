@@ -52,8 +52,8 @@ def posts():
 def posts_post_id(post_id=None):
     all_posts = []
     post_usernames = {}
-    cleanpostid = sanitise.all(post_id)  # remove html chars, see sanitise.py
-    raw_sql = 'SELECT * FROM post WHERE id="{}"'.format(cleanpostid)
+    clean_post_id = sanitise.all(post_id)  # remove html chars, see sanitise.py
+    raw_sql = 'SELECT * FROM post WHERE id="{}"'.format(clean_post_id)
     # flash(raw_sql)  # Flash the SQL for testing and debugging
     the_post = db.session.execute(raw_sql).first()
     if the_post:
@@ -75,13 +75,13 @@ def posts_user_username(user_username=None):
     start_time = time.time()  # Begin timing the process
     all_posts = []
     post_usernames = {}
-    cleanusername = sanitise.all(user_username)
-    raw_sql = 'SELECT id, username FROM user WHERE username="{}"'.format(cleanusername)
+    clean_username = sanitise.all(user_username)
+    raw_sql = 'SELECT id, username FROM user WHERE username="{}"'.format(clean_username)
     # flash(raw_sql)  # Flash the SQL for testing and debugging
     the_user = db.session.execute(raw_sql).first()
     if the_user:
-        cleantheuserid = sanitise.all(the_user.id)
-        raw_sql = 'SELECT * FROM post WHERE user_id="{}" ORDER BY update_time DESC'.format(cleantheuserid)
+        clean_the_user_id = sanitise.all(the_user.id)
+        raw_sql = 'SELECT * FROM post WHERE user_id="{}" ORDER BY update_time DESC'.format(clean_the_user_id)
         all_posts = db.session.execute(raw_sql).fetchall()
         if not all_posts:
             flash('You have not created any posts yet!\n'
@@ -122,14 +122,14 @@ def create_post():
         form = forms.CreatePostForm()
 
         if request.method == 'POST' and form.validate():
-            cleansessionid = sanitise.all(session['user_id'])
-            raw_sql = 'SELECT id FROM user WHERE id="{}"'.format(cleansessionid)
+            clean_session_id = sanitise.all(session['user_id'])
+            raw_sql = 'SELECT id FROM user WHERE id="{}"'.format(clean_session_id)
             # flash(raw_sql)  # Flash the SQL for testing and debugging
             the_user = db.session.execute(raw_sql).first()
             if the_user:  # Only create a post if the user exist
-                cleanformtitle = sanitise.all(form.title.data)
-                cleanformbody = sanitise.all(form.body.data)
-                values = [cleansessionid, cleanformtitle, cleanformbody, datetime.utcnow(), datetime.utcnow()]
+                clean_form_title = sanitise.all(form.title.data)
+                clean_form_body = sanitise.all(form.body.data)
+                values = [clean_session_id, clean_form_title, clean_form_body, datetime.utcnow(), datetime.utcnow()]
                 raw_sql = 'INSERT INTO post (user_id, title, body, create_time, update_time) VALUES ({})'.format(
                     ', '.join('"{}"'.format(str(v)) for v in values)
                 )
@@ -203,8 +203,10 @@ def register():
                 db.session.execute(raw_sql)
                 db.session.commit()
 
+                username_token = token.generate_confirmation_token(clean_username)
                 email_token = token.generate_confirmation_token(clean_email)
-                confirm_url = url_for('confirm_email', username=clean_username, email_token=email_token, _external=True)
+                confirm_url = url_for('confirm_email', username_token=username_token,
+                                      email_token=email_token, _external=True)
                 html = render_template('activate.html', confirm_url=confirm_url)
                 subject = "Please confirm your email"
                 email.send_email(clean_email, subject, html)
@@ -223,16 +225,16 @@ def login():
     else:
         form = forms.LoginForm()
         if request.method == 'POST' and form.validate():
-            cleanusername = sanitise.all(form.username.data)
-            cleanpassword = sanitise.all(form.password.data)
-            raw_sql = 'SELECT * FROM user WHERE username="{}"'.format(cleanusername)
+            clean_username = sanitise.all(form.username.data)
+            clean_password = sanitise.all(form.password.data)
+            raw_sql = 'SELECT * FROM user WHERE username="{}"'.format(clean_username)
             # flash(raw_sql)  # Flash the SQL for testing and debugging
             user_candidates = db.session.execute(raw_sql).fetchall()  # Get possible users from username
 
             the_user = None
             if user_candidates:  # For every candidate, check if password hashes match
                 for usr in user_candidates:
-                    password_hashed = hashing.generate_hash(cleanpassword, salt=usr.salt,
+                    password_hashed = hashing.generate_hash(clean_password, salt=usr.salt,
                                                             pepper=app.config.get('SECRET_KEY', 'no_secret_key'))
                     if usr.password == password_hashed:  # Match found - proceed to login
                         the_user = usr
@@ -284,12 +286,13 @@ def confirm():
     return render_template('confirmed.html')
 
 
-@app.route('/confirm/<username>/<email_token>')
-def confirm_email(username, email_token):
+@app.route('/confirm/<username_token>/<email_token>')
+def confirm_email(username_token, email_token):
+    username_in = token.confirm_token(username_token)
     email_in = token.confirm_token(email_token)
     clean_email = sanitise.all_except(email_in, ['@', '.'])
 
-    raw_sql = 'SELECT * FROM user WHERE username="{}"'.format(username)
+    raw_sql = 'SELECT * FROM user WHERE username="{}"'.format(username_in)
     # flash(raw_sql)  # Flash the SQL for testing and debugging
     user = db.session.execute(raw_sql).first()
     if user:
@@ -298,7 +301,7 @@ def confirm_email(username, email_token):
         if user.confirmed_email == 1:
             flash('Account already confirmed. Please login.')
         elif user.email == hashed_email:
-            raw_sql = 'UPDATE user SET confirmed_email = 1 WHERE username="{}"'.format(username)
+            raw_sql = 'UPDATE user SET confirmed_email = 1 WHERE username="{}"'.format(username_in)
             db.session.execute(raw_sql)
             db.session.commit()
             flash('You have confirmed your account. Thanks!')

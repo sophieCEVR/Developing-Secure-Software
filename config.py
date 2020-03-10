@@ -9,7 +9,7 @@ class Config(object):
     SQLALCHEMY_ECHO = True  # log all statements issued - useful for debugging
     WTF_CSRF_ENABLED = False  # disable flask-WTF built-in CSRF form protection
     SESSION_COOKIE_SECURE = True # Browser can only send cookies to the server over an encrypted connection
-    SECURITY_PASSWORD_SALT = 'my_precious_two'
+    SECURITY_PASSWORD_SALT = 'y^1VceWziZiy7^9!6Qr1p$yuZR5G1rVZ*CEJxMj1WFznD#8PL*^!'
 
     # mail settings
     MAIL_SERVER = 'smtp.gmail.com'
