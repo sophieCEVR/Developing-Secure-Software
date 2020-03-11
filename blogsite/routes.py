@@ -341,7 +341,7 @@ def password_reset(username_token, email_token):
                 # flash(raw_sql)  # Flash the SQL for testing and debugging
                 db.session.execute(raw_sql)
                 db.session.commit()
-            return render_template('login.html')
+            return redirect(url_for('login'))
     return render_template('password_reset.html', email_token=email_token, username_token=username_token, form=form,
                            title='Reset Password')
 
