@@ -27,14 +27,14 @@ account_enumeration_times = {'posts_user_username': dict()}
 @app.route('/')
 @app.route('/about')
 def about():
-    if session.get('active'):
+    if session.get('user'):
         csrf.validate_session()
     return render_template('about.html', title='About')
 
 
 @app.route('/posts')
 def posts():
-    if session.get('active'):
+    if session.get('user'):
         csrf.validate_session()
     post_usernames = {}
     raw_sql = 'SELECT * FROM post ORDER BY update_time DESC'
@@ -69,7 +69,7 @@ def posts_post_id(post_id=None):
 
 @app.route('/posts/account/<user_username>')
 def posts_user_username(user_username=None):
-    if session.get('active'):
+    if session.get('user'):
         csrf.validate_session()
     wait_time = 0  # Initial time to wait
     start_time = time.time()  # Begin timing the process
@@ -114,7 +114,7 @@ def posts_user_username(user_username=None):
 
 @app.route('/posts/create', methods=['GET', 'POST'])
 def create_post():
-    if not session.get('active'):
+    if session.get('user'):
         flash('You must log in to create a post!')
         return redirect(url_for('login'))
     else:
@@ -146,9 +146,8 @@ def create_post():
 
 @app.route('/posts/delete', methods=['POST'])
 def delete_post(post_id=None):
-    if not session.get('active'):
+    if session.get('user'):
         flash('You must log in to delete a post!')
-        logout()
         return redirect(url_for('login'))
     elif not request.form.get('post_id'):
         flash('You must provide an id to delete a post!')
@@ -174,7 +173,7 @@ def delete_post(post_id=None):
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    if session.get('active'):
+    if session.get('user'):
         csrf.validate_session()
         flash('Please logout before creating a new account!')
         return redirect(url_for('posts'))
@@ -218,7 +217,7 @@ def register():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if session.get('active'):  # redirect to home if logged in
+    if session.get('user'):  # redirect to home if logged in
         csrf.validate_session()
         flash('You are already logged in!')
         return redirect(url_for('posts'))
@@ -288,34 +287,30 @@ def confirm():
 
 @app.route('/confirm/<username_token>/<email_token>')
 def confirm_email(username_token, email_token):
-    if session.get('active'):
-        csrf.validate_session()
-        flash('You\'re already logged in!')
-        return redirect(url_for('posts'))
-    else:
-        username_in = token.confirm_token(username_token)
-        email_in = token.confirm_token(email_token)
-        clean_email = sanitise.all_except(email_in, ['@', '.'])
 
-        raw_sql = 'SELECT * FROM user WHERE username="{}"'.format(username_in)
-        # flash(raw_sql)  # Flash the SQL for testing and debugging
-        user = db.session.execute(raw_sql).first()
-        if user:
-            hashed_email = hashing.generate_hash(clean_email, salt=user.salt,
-                                                 pepper=app.config.get('SECRET_KEY', 'no_secret_key'))
-            if user.confirmed_email == 1:
-                flash('Account already confirmed. Please login.')
-            elif user.email == hashed_email:
-                raw_sql = 'UPDATE user SET confirmed_email = 1 WHERE username="{}"'.format(username_in)
-                db.session.execute(raw_sql)
-                db.session.commit()
-                flash('You have confirmed your account. Thanks!')
+    username_in = token.confirm_token(username_token)
+    email_in = token.confirm_token(email_token)
+    clean_email = sanitise.all_except(email_in, ['@', '.'])
+
+    raw_sql = 'SELECT * FROM user WHERE username="{}"'.format(username_in)
+    # flash(raw_sql)  # Flash the SQL for testing and debugging
+    user = db.session.execute(raw_sql).first()
+    if user:
+        hashed_email = hashing.generate_hash(clean_email, salt=user.salt,
+                                             pepper=app.config.get('SECRET_KEY', 'no_secret_key'))
+        if user.confirmed_email == 1:
+            flash('Account already confirmed. Please login.')
+        elif user.email == hashed_email:
+            raw_sql = 'UPDATE user SET confirmed_email = 1 WHERE username="{}"'.format(username_in)
+            db.session.execute(raw_sql)
+            db.session.commit()
+            flash('You have confirmed your account. Thanks!')
     return redirect(url_for('about'))
 
 
 @app.route('/password_reset/<username_token>/<email_token>', methods=['GET', 'POST'])
 def password_reset(username_token, email_token):
-    if session.get('active'):
+    if session.get('user'):
         csrf.validate_session()
         flash('You\'re already logged in!')
         return redirect(url_for('posts'))
@@ -336,7 +331,9 @@ def password_reset(username_token, email_token):
                 clean_password = sanitise.all(form.password.data)
                 password_hashed = hashing.generate_hash(clean_password, salt=user.salt,
                                                         pepper=app.config.get('SECRET_KEY', 'no_secret_key'))
-                flash("Password reset, please log in with new credentials")
+                flash('If username matches that which requested a password change\n'
+                      'then your details have been updated and you can login with the new details.\n'
+                      'If no update has occurred, please try again and ensure the username/email you enter is correct.')
                 raw_sql = 'UPDATE user SET password="{}" WHERE username="{}"'.format(password_hashed, username_in)
                 # flash(raw_sql)  # Flash the SQL for testing and debugging
                 db.session.execute(raw_sql)
@@ -348,7 +345,7 @@ def password_reset(username_token, email_token):
 
 @app.route('/request_reset', methods=['GET', 'POST'])
 def request_reset():
-    if session.get('active'):
+    if session.get('user'):
         csrf.validate_session()
         flash('You\'re already logged in!')
         return redirect(url_for('posts'))
@@ -361,18 +358,21 @@ def request_reset():
             raw_sql = 'SELECT * FROM user WHERE username="{}"'.format(clean_username)
             # flash(raw_sql)  # Flash the SQL for testing and debugging
             the_user = db.session.execute(raw_sql).first()
-            email_hashed = hashing.generate_hash(clean_email, salt=the_user.salt,
+            if not the_user:
+                flash("Account name not registered.")
+                redirect(url_for('register'))
+            else:
+                email_hashed = hashing.generate_hash(clean_email, salt=the_user.salt,
                                                  pepper=app.config.get('SECRET_KEY', 'no_secret_key'))
-            if the_user.email == email_hashed:
-                username_token = token.generate_confirmation_token(clean_username)
-                email_token = token.generate_confirmation_token(clean_email)
-                reset_url = url_for('password_reset', username_token=username_token,
+                if the_user.email == email_hashed:
+                    username_token = token.generate_confirmation_token(clean_username)
+                    email_token = token.generate_confirmation_token(clean_email)
+                    reset_url = url_for('password_reset', username_token=username_token,
                                     email_token=email_token, _external=True)
-                html = render_template('reset_email.html', reset_url=reset_url)
-                email.send_email(clean_email, "Your password reset link", html)
+                    html = render_template('reset_email.html', reset_url=reset_url)
+                    email.send_email(clean_email, "Your password reset link", html)
 
-            flash('If the username/email pair exists, you have been sent a reset email.\n'
-                  'If you did not receive an email, please try again.')
+                flash('If the account exists, you have been sent a password reset link.')
 
             return redirect(url_for('about'))
         return render_template('request_reset.html', form=form, title='Request Reset')
