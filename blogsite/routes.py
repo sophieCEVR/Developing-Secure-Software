@@ -288,21 +288,91 @@ def confirm():
 
 @app.route('/confirm/<username_token>/<email_token>')
 def confirm_email(username_token, email_token):
-    username_in = token.confirm_token(username_token)
-    email_in = token.confirm_token(email_token)
-    clean_email = sanitise.all_except(email_in, ['@', '.'])
+    if session.get('active'):
+        csrf.validate_session()
+        flash('You\'re already logged in!')
+        return redirect(url_for('posts'))
+    else:
+        username_in = token.confirm_token(username_token)
+        email_in = token.confirm_token(email_token)
+        clean_email = sanitise.all_except(email_in, ['@', '.'])
 
-    raw_sql = 'SELECT * FROM user WHERE username="{}"'.format(username_in)
-    # flash(raw_sql)  # Flash the SQL for testing and debugging
-    user = db.session.execute(raw_sql).first()
-    if user:
-        hashed_email = hashing.generate_hash(clean_email, salt=user.salt,
-                                             pepper=app.config.get('SECRET_KEY', 'no_secret_key'))
-        if user.confirmed_email == 1:
-            flash('Account already confirmed. Please login.')
-        elif user.email == hashed_email:
-            raw_sql = 'UPDATE user SET confirmed_email = 1 WHERE username="{}"'.format(username_in)
-            db.session.execute(raw_sql)
-            db.session.commit()
-            flash('You have confirmed your account. Thanks!')
+        raw_sql = 'SELECT * FROM user WHERE username="{}"'.format(username_in)
+        # flash(raw_sql)  # Flash the SQL for testing and debugging
+        user = db.session.execute(raw_sql).first()
+        if user:
+            hashed_email = hashing.generate_hash(clean_email, salt=user.salt,
+                                                 pepper=app.config.get('SECRET_KEY', 'no_secret_key'))
+            if user.confirmed_email == 1:
+                flash('Account already confirmed. Please login.')
+            elif user.email == hashed_email:
+                raw_sql = 'UPDATE user SET confirmed_email = 1 WHERE username="{}"'.format(username_in)
+                db.session.execute(raw_sql)
+                db.session.commit()
+                flash('You have confirmed your account. Thanks!')
     return redirect(url_for('about'))
+
+
+@app.route('/password_reset/<username_token>/<email_token>', methods=['GET', 'POST'])
+def password_reset(username_token, email_token):
+    if session.get('active'):
+        csrf.validate_session()
+        flash('You\'re already logged in!')
+        return redirect(url_for('posts'))
+    else:
+        form = forms.ResetPassword()
+        if request.method == 'POST' and form.validate():
+            username_in = token.confirm_token(username_token)
+            email_in = token.confirm_token(email_token)
+            clean_username = sanitise.all(username_in)
+            clean_email = sanitise.all_except(email_in, ['@', '.'])
+            raw_sql = 'SELECT * FROM user WHERE username="{}"'.format(clean_username)
+            # flash(raw_sql)  # Flash the SQL for testing and debugging
+            user = db.session.execute(raw_sql).first()
+            hashed_email = hashing.generate_hash(clean_email, salt=user.salt,
+                                                 pepper=app.config.get('SECRET_KEY', 'no_secret_key'))
+
+            if user.username == username_in and user.email == hashed_email:
+                clean_password = sanitise.all(form.password.data)
+                password_hashed = hashing.generate_hash(clean_password, salt=user.salt,
+                                                        pepper=app.config.get('SECRET_KEY', 'no_secret_key'))
+                flash("Password reset, please log in with new credentials")
+                raw_sql = 'UPDATE user SET password="{}" WHERE username="{}"'.format(password_hashed, username_in)
+                # flash(raw_sql)  # Flash the SQL for testing and debugging
+                db.session.execute(raw_sql)
+                db.session.commit()
+            return render_template('login.html')
+    return render_template('password_reset.html', email_token=email_token, username_token=username_token, form=form,
+                           title='Reset Password')
+
+
+@app.route('/request_reset', methods=['GET', 'POST'])
+def request_reset():
+    if session.get('active'):
+        csrf.validate_session()
+        flash('You\'re already logged in!')
+        return redirect(url_for('posts'))
+    else:
+        form = forms.RequestReset()
+        if request.method == 'POST' and form.validate():
+            clean_username = sanitise.all(form.username.data)
+            clean_email = sanitise.all_except(form.email.data, ['@', '.'])
+
+            raw_sql = 'SELECT * FROM user WHERE username="{}"'.format(clean_username)
+            # flash(raw_sql)  # Flash the SQL for testing and debugging
+            the_user = db.session.execute(raw_sql).first()
+            email_hashed = hashing.generate_hash(clean_email, salt=the_user.salt,
+                                                 pepper=app.config.get('SECRET_KEY', 'no_secret_key'))
+            if the_user.email == email_hashed:
+                username_token = token.generate_confirmation_token(clean_username)
+                email_token = token.generate_confirmation_token(clean_email)
+                reset_url = url_for('password_reset', username_token=username_token,
+                                    email_token=email_token, _external=True)
+                html = render_template('reset_email.html', reset_url=reset_url)
+                email.send_email(clean_email, "Your password reset link", html)
+
+            flash('If the username/email pair exists, you have been sent a reset email.\n'
+                  'If you did not receive an email, please try again.')
+
+            return redirect(url_for('about'))
+        return render_template('request_reset.html', form=form, title='Request Reset')

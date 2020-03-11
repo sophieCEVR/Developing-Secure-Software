@@ -62,3 +62,40 @@ class CreatePostForm(FlaskForm):
         validators.Length(max_length=models.Post.body.type.length)
     ])
     submit = fields.SubmitField('Submit')
+
+
+class ResetPassword(FlaskForm):
+    username = fields.StringField('Username*:', validators=[
+        validators.Required(),
+        validators.AlphaNumeric(),
+        validators.Length(min_length=8, max_length=models.User.username.type.length),
+        validators.NotContainAny([' ', '_', '&', '<', '>', '/', '\\', "'", '"', ',', '.', '=', '-', '+'])
+    ])
+    password = fields.PasswordField('New Password*:', validators=[
+        validators.Required(),
+        validators.AlphaNumeric(),
+        validators.Length(min_length=8, max_length=models.User.password.type.length),
+        validators.NotContainAny([' '], message=u'Field must not contain any spaces'),
+        validators.DifferentFrom('username')
+    ])
+    passwordConfirm = fields.PasswordField('Confirm New Password*:', validators=[
+        validators.Required(),
+        validators.EqualTo('password')
+    ])
+    submit = fields.SubmitField('Reset Password')
+
+
+class RequestReset(FlaskForm):
+    username = fields.StringField('Username*:', validators=[
+        validators.Required(),
+        validators.AlphaNumeric(),
+        validators.Length(min_length=8, max_length=models.User.username.type.length),
+        validators.NotContainAny([' ', '_', '&', '<', '>', '/', '\\', "'", '"', ',', '.', '=', '-', '+'])
+    ])
+    email = fields.StringField('Email*:', validators=[
+        validators.Required(),
+        validators.MustContainRegex(),
+        validators.NotContainAny([' ', '&', '<', '>', '/', '\\', "'", '"', ',', '=', '-', '+'])
+    ])
+    submit = fields.SubmitField('Request Reset')
+

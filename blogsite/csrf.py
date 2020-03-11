@@ -29,11 +29,12 @@ def delete_token():
     raw_sql = 'SELECT * FROM csrf_token WHERE user_id="{}"'.format(session_user)
     # flash(raw_sql)
     results = db.session.execute(raw_sql)
-    values = results.first()
-    raw_sql = 'DELETE FROM csrf_token WHERE token="{}" AND user_id="{}"'.format(values[0], values[2])
-    # flash(raw_sql)
-    db.session.execute(raw_sql)
-    db.session.commit()
+    values = results.fetchall()
+    for v in values:
+        raw_sql = 'DELETE FROM csrf_token WHERE token="{}" AND user_id="{}"'.format(v[0], v[2])
+        # flash(raw_sql)
+        db.session.execute(raw_sql)
+        db.session.commit()
 
 
 def csrf_token():
@@ -50,7 +51,7 @@ def validate_session():
     results = db.session.execute(raw_sql)
     values = results.first()
     # In production, validity period would be set to 20 minutes as per OWASP recommendation.
-    valid_period = datetime.strptime(values[1], '%Y-%m-%d %H:%M:%S.%f') + timedelta(minutes=1)
+    valid_period = datetime.strptime(values[1], '%Y-%m-%d %H:%M:%S.%f') + timedelta(minutes=10)
 
     if compare_time(valid_period):
         if check_csrf(values[0]):

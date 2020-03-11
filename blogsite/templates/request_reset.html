@@ -1,11 +1,11 @@
 <!--Inheriting layout template-->
 {% extends "base.html" %}
 
-<!--Content for the Home Page-->
+<!--Content for the Reset Password Page-->
 {% block content %}
-    <h1>Sign In</h1>
+    <h1>Request Password Reset</h1>
     <!--novalidate disables browser validation - can be removed once flask validation is tested and working-->
-    <form action="{{ url_for('login') }}" method="post" novalidate>
+    <form action="{{ url_for('request_reset') }}" method="post" novalidate>
         <p>
             {{ form.username.label|safe }}
             <br>
@@ -16,10 +16,10 @@
             {% endfor %}
         </p>
         <p>
-            {{ form.password.label|safe }}
+            {{ form.email.label|safe}}
             <br>
-            {{ form.password|safe }}
-            {% for error in form.password.errors %}
+            {{ form.email|safe }}
+            {% for error in form.email.errors %}
             <br>
             <span style="color: red">[{{ error|safe }}]</span>
             {% endfor %}
@@ -28,5 +28,4 @@
             {{ form.submit|safe }}
         </p>
     </form>
-    <a href="{{ url_for('request_reset') }}">Forgotten Password?</a>
 {% endblock content %}
