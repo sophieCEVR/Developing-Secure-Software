@@ -27,14 +27,14 @@ account_enumeration_times = {'posts_user_username': dict()}
 @app.route('/')
 @app.route('/about')
 def about():
-    if session.get('user'):
+    if session.get('active'):
         csrf.validate_session()
     return render_template('about.html', title='About')
 
 
 @app.route('/posts')
 def posts():
-    if session.get('user'):
+    if session.get('active'):
         csrf.validate_session()
     post_usernames = {}
     raw_sql = 'SELECT * FROM post ORDER BY update_time DESC'
@@ -50,6 +50,8 @@ def posts():
 
 @app.route('/posts/view/<post_id>')
 def posts_post_id(post_id=None):
+    if session.get('active'):
+        csrf.validate_session()
     all_posts = []
     post_usernames = {}
     clean_post_id = sanitise.all(post_id)  # remove html chars, see sanitise.py
@@ -62,14 +64,13 @@ def posts_post_id(post_id=None):
         raw_sql = 'SELECT username FROM user WHERE id="{}"'.format(cleanthepostuserid)
         the_user = db.session.execute(raw_sql).first()
         if the_user:
-            csrf.validate_session()
             post_usernames[the_post.id] = the_user.username
     return render_template('posts.html', posts=all_posts, post_usernames=post_usernames, title='Posts')
 
 
 @app.route('/posts/account/<user_username>')
 def posts_user_username(user_username=None):
-    if session.get('user'):
+    if session.get('active'):
         csrf.validate_session()
     wait_time = 0  # Initial time to wait
     start_time = time.time()  # Begin timing the process
@@ -114,7 +115,7 @@ def posts_user_username(user_username=None):
 
 @app.route('/posts/create', methods=['GET', 'POST'])
 def create_post():
-    if session.get('user'):
+    if not session.get('active'):
         flash('You must log in to create a post!')
         return redirect(url_for('login'))
     else:
@@ -146,7 +147,7 @@ def create_post():
 
 @app.route('/posts/delete', methods=['POST'])
 def delete_post(post_id=None):
-    if session.get('user'):
+    if not session.get('active'):
         flash('You must log in to delete a post!')
         return redirect(url_for('login'))
     elif not request.form.get('post_id'):
@@ -173,7 +174,7 @@ def delete_post(post_id=None):
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    if session.get('user'):
+    if session.get('active'):
         csrf.validate_session()
         flash('Please logout before creating a new account!')
         return redirect(url_for('posts'))
@@ -217,7 +218,7 @@ def register():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if session.get('user'):  # redirect to home if logged in
+    if session.get('active'):  # redirect to home if logged in
         csrf.validate_session()
         flash('You are already logged in!')
         return redirect(url_for('posts'))
@@ -310,7 +311,7 @@ def confirm_email(username_token, email_token):
 
 @app.route('/password_reset/<username_token>/<email_token>', methods=['GET', 'POST'])
 def password_reset(username_token, email_token):
-    if session.get('user'):
+    if session.get('active'):
         csrf.validate_session()
         flash('You\'re already logged in!')
         return redirect(url_for('posts'))
@@ -345,7 +346,7 @@ def password_reset(username_token, email_token):
 
 @app.route('/request_reset', methods=['GET', 'POST'])
 def request_reset():
-    if session.get('user'):
+    if session.get('active'):
         csrf.validate_session()
         flash('You\'re already logged in!')
         return redirect(url_for('posts'))
