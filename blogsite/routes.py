@@ -85,7 +85,7 @@ def posts_user_username(user_username=None):
         raw_sql = 'SELECT * FROM post WHERE user_id="{}" ORDER BY update_time DESC'.format(clean_the_user_id)
         all_posts = db.session.execute(raw_sql).fetchall()
         if not all_posts:
-            if sanitise.all(session['user_id']) == clean_the_user_id:
+            if sanitise.all(session.get('user_id')) == clean_the_user_id:
                 flash('You have not created any posts yet!\n'
                       'Click \'Create Posts\' to create one now')
             else:
@@ -148,7 +148,7 @@ def create_post():
         return render_template('create_post.html', form=form, title='Create Post')
 
 
-@app.route('/posts/delete', methods=['POST'])
+@app.route('/posts/delete', methods=['POST', 'GET'])
 def delete_post(post_id=None):
     if not session.get('active'):
         flash('You must log in to delete a post!')
@@ -157,17 +157,17 @@ def delete_post(post_id=None):
         flash('You must provide an id to delete a post!')
         return redirect(url_for('posts'))
     else:
-        cleanpostid = sanitise.all(request.form['post_id'])
+        clean_post_id = sanitise.all(request.form['post_id'])
 
-        raw_sql = 'SELECT * FROM post WHERE id="{}"'.format(cleanpostid)
+        raw_sql = 'SELECT * FROM post WHERE id="{}"'.format(clean_post_id)
         # flash(raw_sql)  # Flash the SQL for testing and debugging
         the_post = db.session.execute(raw_sql).first()
         if not the_post or the_post.user_id != session['user_id']:  # only delete posts that exist and are owned by user
             flash('You cannot delete that')
             return redirect(url_for('posts_post_id', post_id=session['user_id']))
         else:
-            cleanthepost = sanitise.all(the_post.id)
-            raw_sql = 'DELETE FROM post WHERE id="{}"'.format(cleanthepost)
+            clean_the_post = sanitise.all(the_post.id)
+            raw_sql = 'DELETE FROM post WHERE id="{}"'.format(clean_the_post)
             # flash(raw_sql)  # Flash the SQL for testing and debugging
             db.session.execute(raw_sql)
             db.session.commit()
@@ -291,7 +291,6 @@ def confirm():
 
 @app.route('/confirm/<username_token>/<email_token>')
 def confirm_email(username_token, email_token):
-
     username_in = token.confirm_token(username_token)
     email_in = token.confirm_token(email_token)
     clean_email = sanitise.all_except(email_in, ['@', '.'])
@@ -367,12 +366,12 @@ def request_reset():
                 redirect(url_for('register'))
             else:
                 email_hashed = hashing.generate_hash(clean_email, salt=the_user.salt,
-                                                 pepper=app.config.get('SECRET_KEY', 'no_secret_key'))
+                                                     pepper=app.config.get('SECRET_KEY', 'no_secret_key'))
                 if the_user.email == email_hashed:
                     username_token = token.generate_confirmation_token(clean_username)
                     email_token = token.generate_confirmation_token(clean_email)
                     reset_url = url_for('password_reset', username_token=username_token,
-                                    email_token=email_token, _external=True)
+                                        email_token=email_token, _external=True)
                     html = render_template('reset_email.html', reset_url=reset_url)
                     email.send_email(clean_email, "Your password reset link", html)
 
