@@ -85,8 +85,11 @@ def posts_user_username(user_username=None):
         raw_sql = 'SELECT * FROM post WHERE user_id="{}" ORDER BY update_time DESC'.format(clean_the_user_id)
         all_posts = db.session.execute(raw_sql).fetchall()
         if not all_posts:
-            flash('You have not created any posts yet!\n'
-                  'Click \'Create Posts\' to create one now')
+            if sanitise.all(session['user_id']) == clean_the_user_id:
+                flash('You have not created any posts yet!\n'
+                      'Click \'Create Posts\' to create one now')
+            else:
+                flash('This user has not created any posts yet :(')
         for p in all_posts:
             post_usernames[p.id] = the_user.username
         try:  # Update average time of query (case = data present)

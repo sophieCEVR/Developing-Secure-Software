@@ -1,7 +1,7 @@
 # CSRF related methods
 from typing import Optional, Any
 
-from . import app, sanitise, routes
+from . import app, sanitise, routes, hashing
 from . import db
 
 from flask import redirect, url_for, session, flash
@@ -57,7 +57,8 @@ def validate_session():
         if check_csrf(values[0]):
             token = csrf_token()
             raw_sql = 'UPDATE csrf_token SET token="{}", valid_from="{}" WHERE user_id="{}";'.format(
-                 token, datetime.utcnow(), session_user)
+                (hashing.generate_hash(token, pepper=app.config.get('CSRF_KEY', 'no_secret_key')),
+                 datetime.utcnow(), session_user))
             # flash(raw_sql)
             db.session.execute(raw_sql)
             db.session.commit()
@@ -81,7 +82,7 @@ def compare_time(comparison_time):
 # Checks the CSRFToken held in the session matches that of the CSRFToken in the DB
 def check_csrf(db_token):
     session_token = session.get('user_csrf')
-    if session_token == db_token:
+    hashed_session_token = hashing.generate_hash(session_token, pepper=app.config.get('CSRF_KEY', 'no_secret_key'))
+    if hashed_session_token == db_token:
         return True
     return False
-

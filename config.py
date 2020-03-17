@@ -10,6 +10,7 @@ class Config(object):
     WTF_CSRF_ENABLED = False  # disable flask-WTF built-in CSRF form protection
     SESSION_COOKIE_SECURE = True # Browser can only send cookies to the server over an encrypted connection
     SECURITY_PASSWORD_SALT = 'y^1VceWziZiy7^9!6Qr1p$yuZR5G1rVZ*CEJxMj1WFznD#8PL*^!'
+    CSRF_KEY = 'BwNQR3zkjDOI$5Rp#HFFpVii!mD$AKmwOM&6yyOShYEAC0ym'
 
     # mail settings
     MAIL_SERVER = 'smtp.gmail.com'
