@@ -55,13 +55,13 @@ class Captcha:
         return str(self.numa) + str(self.op) + str(self.numb) + ' = '
 
 
-# for testing:
+#for testing:
 # if __name__ == '__main__':
 #     object = Captcha()
 #     object2 = Captcha()
 #     print(object.sumasstring())
-#
+
 #     print(object.sum())
 
-    input = input()
-    print(object.checkinput(input))
+    #input = input()
+    #print(object.checkinput(input))

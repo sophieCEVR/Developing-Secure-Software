@@ -156,16 +156,17 @@ def delete_post(post_id=None):
             flash('Your post has been deleted')
             return redirect(url_for('posts'))
 
-thecaptcha = Captcha()
+#thecaptcha = Captcha()
 
 
 @app.route('/register', methods=['GET', 'POST'])
-def register(thecaptcha=thecaptcha):
+def register():
     if session.get('user_id'):
         flash('Please logout before creating a new account!')
         return redirect(url_for('posts'))
     else:
         form = forms.CreateAccountForm()
+        thecaptcha = Captcha()
         if request.method == 'POST' and form.validate() and thecaptcha.checkinput(form.captcha.data):
             print(thecaptcha.sumasstring() + str(form.captcha.data))
             print(thecaptcha.checkinput(form.captcha.data))
@@ -188,7 +189,7 @@ def register(thecaptcha=thecaptcha):
             flash('You have created an account')
             return redirect(url_for('login'))
         elif request.method == 'POST' and form.validate() and not thecaptcha.checkinput(form.captcha.data):
-            thecaptcha = Captcha()
+            newCaptcha = Captcha()
             flash("Incorrect Maths")
             return render_template('register.html', form=form, thecaptcha=thecaptcha.sumasstring(),
                                        title='Create Account')

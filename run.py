@@ -6,4 +6,4 @@ from blogsite import app  # import the app object from blogsite package
 # run the blogsite app
 if __name__ == '__main__':
     print(app.config)
-    app.run()
+    app.run(ssl_context='adhoc')
